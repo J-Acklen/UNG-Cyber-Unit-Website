@@ -159,16 +159,11 @@
       color: var(--text-muted);
     }
 
-    /* ─── XO collapsible staff panel ─────────────────────────── */
-    .xo-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.6rem;
-    }
+    /* ─── XO collapsible staff panel (slides right) ─────────── */
     .xo-toggle {
       cursor: pointer;
       user-select: none;
+      flex-shrink: 0;
     }
     .xo-toggle:focus-visible {
       outline: 2px solid var(--accent);
@@ -178,32 +173,34 @@
       display: inline-block;
       margin-left: 0.35rem;
       font-size: 0.7rem;
-      transition: transform 0.25s ease;
+      transition: transform 0.3s ease;
       vertical-align: middle;
       color: var(--text-muted);
     }
+    /* ▾ rotates -90° → ▸ to indicate content opens rightward */
     .xo-toggle[aria-expanded="true"] .xo-caret {
-      transform: rotate(180deg);
+      transform: rotate(-90deg);
     }
     .staff-panel {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.6rem;
+      flex-wrap: nowrap;
+      gap: 0;
       overflow: hidden;
-      max-height: 0;
+      max-width: 0;
       opacity: 0;
-      transition: max-height 0.3s ease, opacity 0.25s ease;
+      transition: max-width 0.35s ease, opacity 0.25s ease, gap 0.35s ease;
     }
     .staff-panel.open {
-      max-height: 400px;
+      max-width: 800px;
       opacity: 1;
+      gap: 0.6rem;
     }
     .staff-panel .org-node {
       min-width: 110px;
       max-width: 140px;
       padding: 0.75rem 0.9rem;
       border-color: rgba(255,170,0,0.2);
+      flex-shrink: 0;
     }
     .staff-panel .org-node .node-title { color: var(--warn); }
     .staff-panel .org-node:hover { border-color: rgba(255,170,0,0.4); box-shadow: none; }
@@ -339,7 +336,6 @@
     /* ─── Org chart responsive override ─────────────────────── */
     @media (max-width: 700px) {
       .org-node { min-width: 110px; }
-      .xo-wrapper { width: 100%; }
     }
   </style>
 </head>
@@ -469,47 +465,44 @@
             </div>
           </div>
 
-          <!-- Tier 2: XO group (with staff) + DTL -->
-          <div class="org-level" style="gap:2rem; align-items:flex-start;">
+          <!-- Tier 2: XO | staff panel (slides right) | DTL -->
+          <div class="org-level" style="flex-wrap:nowrap; align-items:center; gap:1rem;">
 
-            <!-- XO + collapsible S-series staff -->
-            <div class="xo-wrapper">
-              <div class="org-node xo-toggle" id="xoToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="staffPanel">
-                <div class="node-icon">🏅</div>
-                <div class="node-title">Operations Officer<span class="xo-caret">▾</span></div>
-                <div class="node-abbr">XO — Executive Officer</div>
+            <div class="org-node xo-toggle" id="xoToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="staffPanel">
+              <div class="node-icon">🏅</div>
+              <div class="node-title">Operations Officer<span class="xo-caret">▾</span></div>
+              <div class="node-abbr">XO — Executive Officer</div>
+            </div>
+
+            <div class="staff-panel" id="staffPanel" aria-label="Staff Officers">
+              <div class="org-node">
+                <div class="node-icon">👤</div>
+                <div class="node-title">Personnel</div>
+                <div class="node-abbr">S-1</div>
               </div>
-              <div class="staff-panel" id="staffPanel" aria-label="Staff Officers">
-                <div class="org-node">
-                  <div class="node-icon">👤</div>
-                  <div class="node-title">Personnel</div>
-                  <div class="node-abbr">S-1</div>
-                </div>
-                <div class="org-node">
-                  <div class="node-icon">🔍</div>
-                  <div class="node-title">Intelligence</div>
-                  <div class="node-abbr">S-2</div>
-                </div>
-                <div class="org-node">
-                  <div class="node-icon">📋</div>
-                  <div class="node-title">Training</div>
-                  <div class="node-abbr">S-3</div>
-                </div>
-                <div class="org-node">
-                  <div class="node-icon">📦</div>
-                  <div class="node-title">Logistics</div>
-                  <div class="node-abbr">S-4</div>
-                </div>
-                <div class="org-node">
-                  <div class="node-icon">📢</div>
-                  <div class="node-title">Public Affairs</div>
-                  <div class="node-abbr">S-5</div>
-                </div>
+              <div class="org-node">
+                <div class="node-icon">🔍</div>
+                <div class="node-title">Intelligence</div>
+                <div class="node-abbr">S-2</div>
+              </div>
+              <div class="org-node">
+                <div class="node-icon">📋</div>
+                <div class="node-title">Training</div>
+                <div class="node-abbr">S-3</div>
+              </div>
+              <div class="org-node">
+                <div class="node-icon">📦</div>
+                <div class="node-title">Logistics</div>
+                <div class="node-abbr">S-4</div>
+              </div>
+              <div class="org-node">
+                <div class="node-icon">📢</div>
+                <div class="node-title">Public Affairs</div>
+                <div class="node-abbr">S-5</div>
               </div>
             </div>
 
-            <!-- DTL (civilian equivalent, separate branch) -->
-            <div class="org-node" style="border-color:rgba(0,255,136,0.3); border-style:dashed; align-self:center;">
+            <div class="org-node" style="border-color:rgba(0,255,136,0.3); border-style:dashed; flex-shrink:0;">
               <div class="node-icon">🤝</div>
               <div class="node-title">Deputy Team Leader</div>
               <div class="node-abbr">DTL — Civilian Lead</div>
