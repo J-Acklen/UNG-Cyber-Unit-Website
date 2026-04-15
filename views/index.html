@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNG Cyber Unit</title>
+  <!-- <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>"> -->
+  <link rel="icon" href="/images/CyberUnitLogo_Transparent.png">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/" class="active" aria-current="page">Home</a></li>
+        <li><a href="/#topics">Topics</a></li>
+        <li><a href="/resources">Resources</a></li>
+        <li><a href="/about">About</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+
+    <!-- ─── Hero ──────────────────────────────────────────── -->
+    <section class="hero" id="home">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="container hero-content">
+        <h1 id="heroHeadline"><span id="typewriterText"></span><span class="typewriter-cursor">▌</span></h1>
+        <p class="hero-sub">A beginner's field guide to staying safe in the digital world.</p>
+        <div class="hero-btns">
+          <a href="/#topics" class="btn btn-primary">Start Learning →</a>
+          <a href="/topic/01" class="btn">What is Cybersecurity?</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Stats Bar ──────────────────────────────────────── -->
+    <section aria-label="Site statistics">
+      <div class="container">
+        <div class="stats-bar">
+          <div class="stat-item"><strong id="statTopics">—</strong>Topics</div>
+          <div class="stat-item"><strong id="statQuizzes">—</strong>Quizzes</div>
+          <div class="stat-item"><strong>0</strong>Prerequisites Required</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Topics Grid ────────────────────────────────────── -->
+    <section id="topics" aria-label="Topics">
+      <div class="container">
+        <h2 class="section-heading"><span>//</span> Core Topics</h2>
+        <div class="topic-grid" id="topicGrid">
+          <!-- Populated by main.js -->
+        </div>
+      </div>
+    </section>
+
+
+  </main>
+
+  <!-- ─── Footer ────────────────────────────────────────────── -->
+  <footer>
+    CyberUnit @ UNG | Cybersecurity Intro Class | Built with Node.js + Express
+  </footer>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

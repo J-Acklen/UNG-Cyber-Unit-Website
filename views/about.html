@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberUnit @ UNG — About</title>
+  <link rel="icon" href="/images/CyberUnitLogo_Transparent.png">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ─── About Page Styles ──────────────────────────────────── */
+    .about-hero {
+      background: linear-gradient(135deg, #0d0d0d 0%, #141414 50%, #0d1a0d 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 4rem 0 3rem;
+      text-align: center;
+    }
+    .about-hero img.unit-crest {
+      width: 120px;
+      height: auto;
+      margin-bottom: 1.5rem;
+      filter: drop-shadow(0 0 16px rgba(0,255,136,0.3));
+    }
+    .about-hero h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .about-hero .motto {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--text-muted);
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+    }
+    .about-hero .brigade-tag {
+      display: inline-block;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.2rem 0.75rem;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* ─── Section Layout ─────────────────────────────────────── */
+    .about-section {
+      padding: 3rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .about-section:last-of-type {
+      border-bottom: none;
+    }
+
+    .mission-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 640px) {
+      .mission-grid { grid-template-columns: 1fr; }
+    }
+
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .info-card h3 {
+      color: var(--accent);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .info-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .mission-statement {
+      background: linear-gradient(135deg, #0d1a0d, #141414);
+      border: 1px solid rgba(0,255,136,0.2);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 1.75rem;
+      margin-top: 1.5rem;
+    }
+    .mission-statement p {
+      color: var(--text);
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+
+    /* ─── Org Chart ──────────────────────────────────────────── */
+    .org-chart {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+    }
+
+    .org-level {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .org-node {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      text-align: center;
+      min-width: 140px;
+      max-width: 200px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      flex-shrink: 0;
+    }
+    .org-node:hover {
+      border-color: rgba(0,255,136,0.4);
+      box-shadow: 0 0 12px rgba(0,255,136,0.1);
+    }
+    .org-node.top-node {
+      border-color: rgba(0,255,136,0.5);
+      box-shadow: 0 0 18px rgba(0,255,136,0.12);
+      min-width: 180px;
+    }
+    .org-node.advisor-node {
+      border-color: rgba(68,136,255,0.4);
+      border-style: dashed;
+      min-width: 160px;
+    }
+    .org-node.advisor-node .node-title {
+      color: #4488ff;
+    }
+    .node-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .node-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.2rem;
+    }
+    .node-abbr {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    /* ─── XO collapsible staff panel ─────────────────────────── */
+    .xo-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .xo-toggle {
+      cursor: pointer;
+      user-select: none;
+    }
+    .xo-toggle:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .xo-caret {
+      display: inline-block;
+      margin-left: 0.35rem;
+      font-size: 0.7rem;
+      transition: transform 0.25s ease;
+      vertical-align: middle;
+      color: var(--text-muted);
+    }
+    .xo-toggle[aria-expanded="true"] .xo-caret {
+      transform: rotate(180deg);
+    }
+    .staff-panel {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.25s ease;
+    }
+    .staff-panel.open {
+      max-height: 400px;
+      opacity: 1;
+    }
+    .staff-panel .org-node {
+      min-width: 110px;
+      max-width: 140px;
+      padding: 0.75rem 0.9rem;
+      border-color: rgba(255,170,0,0.2);
+    }
+    .staff-panel .org-node .node-title { color: var(--warn); }
+    .staff-panel .org-node:hover { border-color: rgba(255,170,0,0.4); box-shadow: none; }
+
+    /* ─── Role Cards ─────────────────────────────────────────── */
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+    .role-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+    .role-card:hover { border-color: rgba(0,255,136,0.25); }
+    .role-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .role-icon {
+      font-size: 1.6rem;
+    }
+    .role-title {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--accent);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+    .role-abbr {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+    .role-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+    .role-desc ul {
+      padding-left: 1.2rem;
+      margin-top: 0.5rem;
+    }
+    .role-desc li {
+      margin-bottom: 0.3rem;
+    }
+    .chain-badge {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.25);
+      color: var(--accent);
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+
+    /* ─── Membership qualifications ─────────────────────────── */
+    .qual-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.75rem;
+    }
+    .qual-list li {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+    .qual-list li::before {
+      content: '▸';
+      color: var(--accent);
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    /* ─── Document link ─────────────────────────────────────── */
+    .doc-link {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.4rem;
+      text-decoration: none;
+      color: inherit;
+      max-width: 520px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .doc-link:hover {
+      border-color: rgba(0,255,136,0.35);
+      box-shadow: 0 0 12px rgba(0,255,136,0.07);
+      color: inherit;
+    }
+    .doc-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .doc-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      flex: 1;
+    }
+    .doc-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent);
+    }
+    .doc-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .doc-arrow {
+      font-size: 1rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* ─── Org chart responsive override ─────────────────────── */
+    @media (max-width: 700px) {
+      .org-node { min-width: 110px; }
+      .xo-wrapper { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo">
+        <img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img">
+        <span class="navbar-logo-text">[ CyberUnit @ UNG ]</span>
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="/#topics">Topics</a></li>
+        <li><a href="/resources">Resources</a></li>
+        <li><a href="/about" class="active" aria-current="page">About</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+
+    <!-- ─── Hero ─────────────────────────────────────────── -->
+    <section class="about-hero">
+      <div class="container">
+        <img src="/images/CyberUnitLogo_Transparent.png" alt="Cyber Unit Crest" class="unit-crest">
+        <h1>UNG Cyber Unit</h1>
+        <p class="motto"><i>"Attack, Defend, Exploit."</i></p>
+        <span class="brigade-tag">University of North Georgia · Boar's Head Brigade</span>
+      </div>
+    </section>
+
+    <!-- ─── Overview + Mission ───────────────────────────── -->
+    <section class="about-section" aria-label="Overview and Mission">
+      <div class="container">
+        <h2 class="section-heading"><span>//</span> Overview &amp; Mission</h2>
+
+        <div class="mission-grid">
+          <div class="info-card">
+            <h3>What We Are</h3>
+            <p>
+              The Cyber Unit is a specialty co-curricular unit under the UNG Boar's Head Brigade,
+              designated in May 2023, focused on training in cyber-related events and cyber leadership.
+              Members are assigned to various companies in the Brigade and may include both cadets and
+              civilian students.
+            </p>
+          </div>
+          <div class="info-card">
+            <h3>How We Operate</h3>
+            <p>
+              Member assignments are determined by the Office of the Commandant of Cadets with input
+              from the ROTC Faculty Advisor. The unit participates in competitions, conducts research
+              and development, networks with high-level leaders, and builds team soft skills.
+            </p>
+          </div>
+        </div>
+
+        <div class="mission-statement">
+          <p>
+            <strong style="color:var(--accent); font-family:'Share Tech Mono',monospace; font-size:0.8rem; letter-spacing:0.08em;">MISSION —</strong>
+            &nbsp;The mission of the Cyber Unit is to turn cadets into Cyber / Signal / Military Intelligence
+            leaders who can operate proficiently in tactical environments. This is achieved through cohesion
+            with civilian talents, participating in competitions, networking with high-level leaders, conducting
+            research and development related to the cyber field, and building team soft skills.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Advisors ─────────────────────────────────────── -->
+    <section class="about-section" aria-label="Advisors">
+      <div class="container">
+        <h2 class="section-heading"><span>//</span> Advisors</h2>
+        <div class="mission-grid">
+          <div class="info-card">
+            <h3>ROTC Faculty Advisor</h3>
+            <p>Assigned by the Department of Military Science. Advises the unit and schedules
+            performances with input from the unit. Serves as the approving authority for
+            off-campus events and competitions.</p>
+          </div>
+          <div class="info-card">
+            <h3>Cyber Department Faculty Advisor</h3>
+            <p>Provides mentorship to unit members from the civilian academic side, bridging
+            military and technical domains. An alumni advisor may also be assigned to assist
+            with alumni relations when needed.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Org Chart ─────────────────────────────────────── -->
+    <section class="about-section" aria-label="Unit Structure">
+      <div class="container">
+        <h2 class="section-heading"><span>//</span> Unit Structure</h2>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">
+          Chain of command flows top-down. Dashed borders indicate advisory / civilian-equivalent roles.
+        </p>
+
+        <div class="org-chart" role="img" aria-label="Cyber Unit organizational hierarchy">
+
+          <!-- Tier 0: Advisors (outside chain) -->
+          <div class="org-level" style="gap:1.5rem;">
+            <div class="org-node advisor-node" style="min-width:160px;">
+              <div class="node-icon">🎓</div>
+              <div class="node-title">ROTC Advisor</div>
+              <div class="node-abbr">Faculty / Mil Sci</div>
+            </div>
+            <div class="org-node advisor-node" style="min-width:160px;">
+              <div class="node-icon">💻</div>
+              <div class="node-title">Cyber Dept. Advisor</div>
+              <div class="node-abbr">Civilian Faculty</div>
+            </div>
+          </div>
+
+          <span style="font-family:'Share Tech Mono',monospace; font-size:0.65rem; color:var(--text-muted); letter-spacing:0.1em;">— advises —</span>
+
+          <!-- Tier 1: Commander (OIC) -->
+          <div class="org-level">
+            <div class="org-node top-node" style="min-width:200px;">
+              <div class="node-icon">⭐</div>
+              <div class="node-title">Commander</div>
+              <div class="node-abbr">OIC — Officer in Charge</div>
+            </div>
+          </div>
+
+          <!-- Tier 2: XO group (with staff) + DTL -->
+          <div class="org-level" style="gap:2rem; align-items:flex-start;">
+
+            <!-- XO + collapsible S-series staff -->
+            <div class="xo-wrapper">
+              <div class="org-node xo-toggle" id="xoToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="staffPanel">
+                <div class="node-icon">🏅</div>
+                <div class="node-title">Operations Officer<span class="xo-caret">▾</span></div>
+                <div class="node-abbr">XO — Executive Officer</div>
+              </div>
+              <div class="staff-panel" id="staffPanel" aria-label="Staff Officers">
+                <div class="org-node">
+                  <div class="node-icon">👤</div>
+                  <div class="node-title">Personnel</div>
+                  <div class="node-abbr">S-1</div>
+                </div>
+                <div class="org-node">
+                  <div class="node-icon">🔍</div>
+                  <div class="node-title">Intelligence</div>
+                  <div class="node-abbr">S-2</div>
+                </div>
+                <div class="org-node">
+                  <div class="node-icon">📋</div>
+                  <div class="node-title">Training</div>
+                  <div class="node-abbr">S-3</div>
+                </div>
+                <div class="org-node">
+                  <div class="node-icon">📦</div>
+                  <div class="node-title">Logistics</div>
+                  <div class="node-abbr">S-4</div>
+                </div>
+                <div class="org-node">
+                  <div class="node-icon">📢</div>
+                  <div class="node-title">Public Affairs</div>
+                  <div class="node-abbr">S-5</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- DTL (civilian equivalent, separate branch) -->
+            <div class="org-node" style="border-color:rgba(0,255,136,0.3); border-style:dashed; align-self:center;">
+              <div class="node-icon">🤝</div>
+              <div class="node-title">Deputy Team Leader</div>
+              <div class="node-abbr">DTL — Civilian Lead</div>
+            </div>
+
+          </div>
+
+          <!-- Tier 3: NCOIC -->
+          <div class="org-level">
+            <div class="org-node" style="min-width:180px;">
+              <div class="node-icon">🪖</div>
+              <div class="node-title">1st Sergeant</div>
+              <div class="node-abbr">NCOIC</div>
+            </div>
+          </div>
+
+          <!-- Tier 4: Element Leaders -->
+          <div class="org-level" style="gap:1rem;">
+            <div class="org-node" style="min-width:140px;">
+              <div class="node-icon">🔷</div>
+              <div class="node-title">Element Leader</div>
+              <div class="node-abbr">Element A</div>
+            </div>
+            <div class="org-node" style="min-width:140px;">
+              <div class="node-icon">🔷</div>
+              <div class="node-title">Element Leader</div>
+              <div class="node-abbr">Element B</div>
+            </div>
+            <div class="org-node" style="min-width:140px; border-color:rgba(68,136,255,0.35);">
+              <div class="node-icon">🔵</div>
+              <div class="node-title" style="color:#4488ff;">Blue Team Captain</div>
+              <div class="node-abbr">Advanced Element</div>
+            </div>
+          </div>
+
+        </div><!-- /org-chart -->
+      </div>
+    </section>
+
+    <!-- ─── Role Descriptions ─────────────────────────────── -->
+    <section class="about-section" aria-label="Roles and Responsibilities">
+      <div class="container">
+        <h2 class="section-heading"><span>//</span> Roles &amp; Responsibilities</h2>
+
+        <div class="roles-grid">
+
+          <!-- OIC -->
+          <div class="role-card">
+            <div class="role-card-header">
+              <span class="role-icon">⭐</span>
+              <div>
+                <div class="role-title">Commander (OIC) <span class="chain-badge">#1 in command</span></div>
+                <div class="role-abbr">Officer in Charge</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>First person in the chain of command. Responsible for the health, morale, welfare, training, and discipline of the entire unit.</p>
+              <ul>
+                <li>Principal liaison to the Commandant's Office and Military Science Department</li>
+                <li>Establishes tactics, techniques, and procedures (TTPs) for the unit</li>
+                <li>Approves all corrective training and disciplinary actions</li>
+                <li>Submits annual recruitment plan each August</li>
+                <li>Selects uniform standards for competitions and practices</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- XO -->
+          <div class="role-card">
+            <div class="role-card-header">
+              <span class="role-icon">🏅</span>
+              <div>
+                <div class="role-title">Operations Officer (XO) <span class="chain-badge">#3 in command</span></div>
+                <div class="role-abbr">Executive Officer</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>Second person in the chain of command; assumes OIC responsibilities in the OIC's absence. Principal staff officer of the unit.</p>
+              <ul>
+                <li>Plans and executes all competitions the unit competes in or hosts</li>
+                <li>Works with the OIC and CyberHawks to plan events</li>
+                <li>Can assume duties of S-1 through S-5 when positions are unfilled</li>
+                <li>Serves as the Civil Military Operations Officer (CMO) for outside contacts</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- DTL -->
+          <div class="role-card">
+            <div class="role-card-header">
+              <span class="role-icon">🤝</span>
+              <div>
+                <div class="role-title">Deputy Team Leader <span class="chain-badge">#2 in command</span></div>
+                <div class="role-abbr">DTL — Civilian Equivalent to OIC</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>Civilian equivalent to the OIC, primarily in charge of civilian student management and coordination. Chairs joint leadership meetings.</p>
+              <ul>
+                <li>Coordinates operations with the Cyber Institute and CyberHawks</li>
+                <li>Responsible for civilian accountability at all practices and events</li>
+                <li>Assumes NCOIC duties if the NCOIC is absent</li>
+                <li>Ensures training continuity when OIC/XO/NCOIC are unavailable</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- NCOIC -->
+          <div class="role-card">
+            <div class="role-card-header">
+              <span class="role-icon">🪖</span>
+              <div>
+                <div class="role-title">1st Sergeant (NCOIC) <span class="chain-badge">#4 in command</span></div>
+                <div class="role-abbr">Non-Commissioned Officer in Charge</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>Third person in the chain of command. Commands the unit during training and is primarily responsible for training execution.</p>
+              <ul>
+                <li>Runs all aspects of practice and ensures personnel are trained to standard</li>
+                <li>Determines and posts the weekly practice schedule</li>
+                <li>Primary disciplinarian; handles issues at his/her level per Blue Book policy</li>
+                <li>Maintains the unit's ABC Roster and TO&amp;E</li>
+                <li>Supervises Element Leads in performance of duties</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- S-3 -->
+          <div class="role-card">
+            <div class="role-card-header">
+              <span class="role-icon">📋</span>
+              <div>
+                <div class="role-title">Training Officer</div>
+                <div class="role-abbr">S-3 — Assistant Executive Officer</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>Creates OPORDs, CONOPs, and training schedules in coordination with the OIC, XO, NCOIC, and DTL.</p>
+              <ul>
+                <li>Builds the semester training schedule</li>
+                <li>Ensures all training aligns with the Unit's plan and Advisor's goals</li>
+                <li>Assists the XO in planning all competitions and events</li>
+                <li>Assumes principal staff officer role in the XO's absence</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- S-5 -->
+          <div class="role-card">
+            <div class="role-card-header">
+              <span class="role-icon">📢</span>
+              <div>
+                <div class="role-title">Public Affairs Officer</div>
+                <div class="role-abbr">S-5 — Media Management</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>Manages all official Cyber Unit social media accounts (Instagram, Discord channels) and handles public-facing communications.</p>
+              <ul>
+                <li>Creates and distributes tryout and recruitment posters</li>
+                <li>Plans and executes fundraising events in coordination with the XO</li>
+                <li>Ensures performance requests originate through the MLC Operations Center</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Element Leaders -->
+          <div class="role-card">
+            <div class="role-card-header">
+              <span class="role-icon">🔷</span>
+              <div>
+                <div class="role-title">Element Leaders <span class="chain-badge">#5 in command</span></div>
+                <div class="role-abbr">Element Lead</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>Responsible for the training and discipline of their individual element. Elected by the NCOIC and OIC.</p>
+              <ul>
+                <li>Coordinate with NCOIC to mentor and guide subordinates</li>
+                <li>Follow or create element training schedules</li>
+                <li>Document subordinate progress and report to NCOIC</li>
+                <li>Take place of NCOIC when he/she is absent</li>
+                <li>May conduct scheduled uniform and equipment inspections</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Blue Team Captain -->
+          <div class="role-card" style="border-color:rgba(68,136,255,0.25);">
+            <div class="role-card-header">
+              <span class="role-icon">🔵</span>
+              <div>
+                <div class="role-title" style="color:#4488ff;">Blue Team Captain</div>
+                <div class="role-abbr">Advanced Training Element</div>
+              </div>
+            </div>
+            <div class="role-desc">
+              <p>An advanced training element leader who operates within a separate sub-element designated as the Blue Team. Functions as an Element Leader within a dedicated advanced-skills environment.</p>
+            </div>
+          </div>
+
+        </div><!-- /roles-grid -->
+      </div>
+    </section>
+
+    <!-- ─── Membership ────────────────────────────────────── -->
+    <section class="about-section" aria-label="Membership Qualifications">
+      <div class="container">
+        <h2 class="section-heading"><span>//</span> Membership Qualifications</h2>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">
+          Open to both cadets and civilians. To be considered a member, you must:
+        </p>
+        <ul class="qual-list">
+          <li>Maintain a minimum GPA of 2.5 or higher</li>
+          <li>Participate regularly in Cyber Unit training</li>
+          <li>Remain in good standing with the University</li>
+          <li>Submit absence requests to the NCOIC or OIC at least 2 days prior</li>
+          <li>Uphold the UNG Honor Code and Anti-Hazing Policy</li>
+          <li>Complete a C.I.P.H.E.R project to advance in rank</li>
+        </ul>
+
+        <div class="info-card" style="margin-top:1.25rem; border-color:rgba(255,170,0,0.2);">
+          <h3 style="color:var(--warn);">Promotion Path</h3>
+          <p>
+            New members must complete <strong style="color:var(--text);">Promotion Week</strong> - a physical aptitude test (cadets only),
+            cyber-related challenges, team building exercises, and a C.I.P.H.E.R project. Successful
+            completion designates a member as a <strong style="color:var(--text);">"Tech."</strong>
+            Completion of two C.I.P.H.E.R projects promotes a Tech to an <strong style="color:var(--text);">Architect</strong>
+            (gold lightning patch). Leadership positions (OIC, XO, DTL, NCOIC, Element Leads) are
+            distinguished by wearing the full golden Cyber patch.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Documents ───────────────────────────────────────── -->
+    <section class="about-section" aria-label="Documents">
+      <div class="container">
+        <h2 class="section-heading"><span>//</span> Documents</h2>
+        <div style="margin-top:1.25rem;">
+          <a href="/sop" target="_blank" rel="noopener" class="doc-link">
+            <span class="doc-icon">📄</span>
+            <div class="doc-info">
+              <span class="doc-title">Cyber Unit Standard Operating Procedures</span>
+              <span class="doc-meta">July 2024 · PDF · UNG Boar's Head Brigade</span>
+            </div>
+            <span class="doc-arrow">↗</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── Footer ───────────────────────────────────────────── -->
+  <footer>
+    CyberUnit @ UNG | University of North Georgia · Boar's Head Brigade | SOP July 2024
+  </footer>
+
+  <script>
+    // Hamburger menu
+    const hamburger = document.getElementById('hamburger');
+    const navLinks  = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      const open = navLinks.classList.toggle('open');
+      hamburger.setAttribute('aria-expanded', open);
+    });
+
+    // XO staff panel toggle
+    const xoToggle   = document.getElementById('xoToggle');
+    const staffPanel = document.getElementById('staffPanel');
+    function toggleStaff() {
+      const expanded = xoToggle.getAttribute('aria-expanded') === 'true';
+      xoToggle.setAttribute('aria-expanded', !expanded);
+      staffPanel.classList.toggle('open', !expanded);
+    }
+    xoToggle.addEventListener('click', toggleStaff);
+    xoToggle.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleStaff(); }
+    });
+  </script>
+
+</body>
+</html>

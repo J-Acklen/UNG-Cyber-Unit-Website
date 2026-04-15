@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberUnit @ UNG — Security Resources</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .res-section { margin-bottom: 3rem; }
+    .res-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .res-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .res-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0,255,136,0.3);
+      box-shadow: 0 6px 20px rgba(0,255,136,0.07);
+      color: inherit;
+    }
+    .res-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+    }
+    .res-card-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--accent);
+    }
+    .res-card-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      flex: 1;
+      line-height: 1.5;
+    }
+    .res-card-footer {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.8rem;
+      align-items: center;
+    }
+    .res-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      border: 1px solid;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .tag-free    { color: var(--accent); border-color: rgba(0,255,136,0.4); background: rgba(0,255,136,0.06); }
+    .tag-paid    { color: var(--warn);   border-color: rgba(255,170,0,0.4);  background: rgba(255,170,0,0.06); }
+    .tag-freemium{ color: var(--info);   border-color: rgba(68,136,255,0.4); background: rgba(68,136,255,0.06); }
+    .tag-beginner{ color: #aaa;          border-color: #333;                  background: transparent; }
+    .tag-advanced{ color: var(--danger); border-color: rgba(255,68,68,0.4);  background: rgba(255,68,68,0.06); }
+    .res-link-arrow {
+      margin-left: auto;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .res-card:hover .res-link-arrow { color: var(--accent); }
+
+    /* Cert roadmap */
+    .cert-track { margin-bottom: 1.5rem; }
+    .cert-track-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+    }
+    .cert-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+    .cert-badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.5rem 0.9rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .cert-arrow {
+      color: var(--text-muted);
+      font-size: 1rem;
+      padding: 0 0.4rem;
+    }
+    .cert-entry   .cert-badge { border-color: var(--accent); color: var(--accent); }
+    .cert-mid     .cert-badge { border-color: var(--warn);   color: var(--warn); }
+    .cert-advanced .cert-badge { border-color: var(--danger); color: var(--danger); }
+
+    /* Hero */
+    .res-hero {
+      padding: 3rem 0 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2.5rem;
+    }
+    .res-hero h1 {
+      font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .res-hero p {
+      color: var(--text-muted);
+      max-width: 600px;
+    }
+    .callout-tip {
+      background: rgba(0,255,136,0.05);
+      border: 1px solid rgba(0,255,136,0.15);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+    .callout-tip strong { color: var(--accent); }
+
+    @media (max-width: 480px) {
+      .res-grid { grid-template-columns: 1fr; }
+      .cert-row { gap: 0.4rem; }
+      .cert-arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="/#topics">Topics</a></li>
+        <li><a href="/resources" class="active" aria-current="page">Resources</a></li>
+        <li><a href="/#about">About</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+    <div class="container">
+
+      <!-- Hero -->
+      <div class="res-hero">
+        <h1>// Security Resources</h1>
+        <p>A curated collection of the best platforms, tools, and references for learning cybersecurity — vetted by the community. All external links open in a new tab.</p>
+        <div class="callout-tip">
+          <strong>Where to start:</strong> If you're brand new, begin with <strong>OverTheWire: Bandit</strong> (Linux basics) → <strong>TryHackMe</strong> (guided learning) → <strong>HackTheBox</strong> (real challenge). Bookmark <strong>PortSwigger Web Academy</strong> for web security — it's free and world-class.
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════
+           SECTION 1 — Practice Platforms
+      ════════════════════════════════════════════════════ -->
+      <section class="res-section" aria-label="Practice platforms">
+        <h2 class="section-heading"><span>01 //</span> Practice Platforms</h2>
+        <div class="res-grid">
+
+          <a href="https://pwn.college" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">pwn.college</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">ASU's structured binary exploitation and system security curriculum. Covers the full path from Linux basics to kernel exploitation. Designed for university students but open to all.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Beginner → Advanced</span>
+            </div>
+          </a>
+
+          <a href="https://www.hackthebox.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">HackTheBox</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Industry-standard platform with realistic vulnerable machines, Pro Labs, and Battlegrounds. Completing machines here is respected on CVs. Active machines require a VPN connection.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-freemium">Freemium</span>
+              <span class="res-tag tag-advanced">Intermediate+</span>
+            </div>
+          </a>
+
+          <a href="https://tryhackme.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">TryHackMe</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Browser-based guided learning with structured paths covering pentesting, web hacking, SOC analysis, and more. The most beginner-friendly hands-on platform. No local Kali needed to start.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-freemium">Freemium</span>
+              <span class="res-tag tag-beginner">Beginner Friendly</span>
+            </div>
+          </a>
+
+          <a href="https://overthewire.org/wargames/" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">OverTheWire</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Classic text-based wargames. <strong>Bandit</strong> (start here!) teaches Linux command-line fundamentals via SSH puzzles. Natas covers web security. Leviathan, Krypton, and more for every level.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Bandit = Perfect First Step</span>
+            </div>
+          </a>
+
+          <a href="https://portswigger.net/web-security" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">PortSwigger Web Security Academy</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">The gold standard for web application security. Made by the creators of Burp Suite. 100% free, covering XSS, SQLi, SSRF, IDOR, authentication flaws, and every OWASP Top 10 category with interactive labs.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">All Levels</span>
+            </div>
+          </a>
+
+          <a href="https://pentesterlab.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">PentesterLab</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Practical web application security exercises from beginner to expert. Covers JWT attacks, code review, SQL injection, and more. A Pro subscription unlocks all content; many free exercises available.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-freemium">Freemium</span>
+              <span class="res-tag tag-advanced">Web Focus</span>
+            </div>
+          </a>
+
+          <a href="https://www.vulnhub.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">VulnHub</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Download and run vulnerable virtual machines locally. No subscription needed — just VirtualBox or VMware. Great for offline practice and building a home lab environment.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Home Lab</span>
+            </div>
+          </a>
+
+          <a href="https://root-me.org" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Root-Me</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Over 400 challenges organized by category: web, network, cryptography, steganography, forensics, scripting. French-origin platform with a strong international community.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Multi-Category</span>
+            </div>
+          </a>
+
+          <a href="https://cryptohack.org" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">CryptoHack</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Dedicated cryptography learning platform. Covers AES, RSA, elliptic curves, hash functions, and more through interactive Python challenges. The best crypto-specific resource available for free.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Cryptography Focus</span>
+            </div>
+          </a>
+
+          <a href="https://www.hacker101.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Hacker101 (HackerOne)</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Free web security education from HackerOne — the world's largest bug bounty platform. Complete CTF challenges to earn invites to private bug bounty programs and start making real money.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Bug Bounty Pipeline</span>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════
+           SECTION 2 — CTF Competitions
+      ════════════════════════════════════════════════════ -->
+      <section class="res-section" aria-label="CTF competitions">
+        <h2 class="section-heading"><span>02 //</span> CTF Competitions</h2>
+        <div class="res-grid">
+
+          <a href="https://picoctf.org" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">picoCTF</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Carnegie Mellon University's beginner-focused CTF competition. Runs annually and keeps past challenges accessible year-round via picoGym. The single best starting point for CTFs.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Perfect First CTF</span>
+            </div>
+          </a>
+
+          <a href="https://ctftime.org" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">CTFtime.org</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">The definitive calendar and archive for CTF competitions worldwide. Browse upcoming events, read past writeups, and track team rankings. Bookmark this and check it weekly.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">CTF Directory</span>
+            </div>
+          </a>
+
+          <a href="https://nationalcyberleague.org" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">National Cyber League (NCL)</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">A semester-long CTF competition for US college students covering 9 security domains. Produces a Scouting Report (skill analysis) that employers and internship programs actively seek out.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-paid">Paid Entry</span>
+              <span class="res-tag tag-beginner">College Students</span>
+            </div>
+          </a>
+
+          <a href="https://csaw.engineering.nyu.edu" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">CSAW CTF (NYU)</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">One of the largest and longest-running academic CTF competitions, run by NYU. Separate beginner and advanced divisions. Great stepping stone between picoCTF and HackTheBox-level challenges.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Annual Competition</span>
+            </div>
+          </a>
+
+          <a href="https://capturetheflag.withgoogle.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Google CTF</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Annual Google-hosted CTF with elite-level challenges. Past challenges stay accessible for practice. Even if the live competition is beyond you now, the archived problems are a goldmine to study.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-advanced">Elite Level</span>
+            </div>
+          </a>
+
+          <a href="https://github.com/ctf-wiki/ctf-wiki" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">CTF Wiki</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Comprehensive community wiki covering every CTF category in depth: pwn, web, crypto, reverse engineering, forensics, and misc. Essential reference when you're stuck on a challenge type.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Reference</span>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════
+           SECTION 3 — Learning Platforms & Courses
+      ════════════════════════════════════════════════════ -->
+      <section class="res-section" aria-label="Learning platforms">
+        <h2 class="section-heading"><span>03 //</span> Learning Platforms & Courses</h2>
+        <div class="res-grid">
+
+          <a href="https://tcm-sec.com/academy" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">TCM Security Academy</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Practical, no-fluff courses by Heath Adams ("The Cyber Mentor"). Covers Practical Ethical Hacking, OSINT, web app, Active Directory, and more. Best value for money in the industry.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-paid">Paid (Affordable)</span>
+              <span class="res-tag tag-beginner">Highly Recommended</span>
+            </div>
+          </a>
+
+          <a href="https://www.cybrary.it" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Cybrary</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Large library of free and paid cybersecurity courses, career paths, and assessments. Good for CompTIA cert prep, threat hunting, SOC analyst training, and structured career paths.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-freemium">Freemium</span>
+              <span class="res-tag tag-beginner">All Levels</span>
+            </div>
+          </a>
+
+          <a href="https://ine.com/learning/areas/cyber-security" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">INE Security (eJPT / eCPPT)</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Home of the eJPT (eLearnSecurity Junior Penetration Tester) — one of the best entry-level hands-on certifications with a free Starter Pass. Their practical labs are excellent for network pentesting.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-freemium">Freemium</span>
+              <span class="res-tag tag-beginner">eJPT Cert Path</span>
+            </div>
+          </a>
+
+          <a href="https://www.professormesser.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Professor Messer</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Completely free, high-quality video courses for CompTIA A+, Network+, and Security+. The go-to resource for cert prep. Millions of students have passed their exams using his materials.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">CompTIA Certs</span>
+            </div>
+          </a>
+
+          <a href="https://www.sans.org/cyber-security-courses/" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">SANS Institute</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">The most respected name in professional security training. Courses lead to GIAC certifications. Very expensive (~$5K/course) but often covered by employers. Look for work study programs and scholarships.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-paid">Paid (Premium)</span>
+              <span class="res-tag tag-advanced">Professional</span>
+            </div>
+          </a>
+
+          <a href="https://www.coursera.org/professional-certificates/google-cybersecurity" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Google Cybersecurity Certificate</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Google's entry-level certificate on Coursera. Covers foundations, network security, SQL, Python, Linux, and SIEM tools. Designed for career changers with no prior experience. Financial aid available.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-paid">Paid (Aid Available)</span>
+              <span class="res-tag tag-beginner">Career Changer</span>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════
+           SECTION 4 — Tools & References
+      ════════════════════════════════════════════════════ -->
+      <section class="res-section" aria-label="Tools and references">
+        <h2 class="section-heading"><span>04 //</span> Tools & References</h2>
+        <div class="res-grid">
+
+          <a href="https://gtfobins.github.io" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">GTFOBins</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Curated list of Unix binaries that can be exploited to bypass local security restrictions. Essential for Linux privilege escalation during CTFs and real engagements. Search for any binary you find with SUID set.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-advanced">Privesc Reference</span>
+            </div>
+          </a>
+
+          <a href="https://lolbas-project.github.io" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">LOLBAS</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Living Off the Land Binaries and Scripts — the Windows equivalent of GTFOBins. Documents native Windows binaries that attackers can abuse to execute code, download files, and bypass defenses.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-advanced">Windows Privesc</span>
+            </div>
+          </a>
+
+          <a href="https://book.hacktricks.xyz" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">HackTricks</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">The most comprehensive pentesting methodology wiki available. Covers every attack technique, exploitation path, and tool usage. When you're stuck on a machine or challenge, check HackTricks first.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Essential Reference</span>
+            </div>
+          </a>
+
+          <a href="https://www.exploit-db.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Exploit-DB / searchsploit</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Public archive of exploits and vulnerable software maintained by Offensive Security. Use <code>searchsploit</code> on Kali to search locally. Always check here after finding a software version.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Exploit Archive</span>
+            </div>
+          </a>
+
+          <a href="https://gchq.github.io/CyberChef/" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">CyberChef</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">GCHQ's "Swiss Army Knife" for data manipulation. Encode/decode base64, hex, XOR, rotate ciphers, extract strings, analyze files — all in a browser-based drag-and-drop interface. Invaluable for CTF crypto challenges.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">CTF Essential</span>
+            </div>
+          </a>
+
+          <a href="https://www.virustotal.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">VirusTotal</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Scan files and URLs against 70+ antivirus engines and threat intelligence feeds. Used by security researchers to analyze suspicious files. Also great for understanding malware behavior via sandbox reports.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Malware Analysis</span>
+            </div>
+          </a>
+
+          <a href="https://www.shodan.io" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Shodan</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Search engine for internet-connected devices. Find exposed webcams, databases, industrial control systems, and servers by banner, port, or location. The go-to OSINT tool for passive reconnaissance.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-freemium">Freemium</span>
+              <span class="res-tag tag-advanced">OSINT / Recon</span>
+            </div>
+          </a>
+
+          <a href="https://owasp.org" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">OWASP</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Open Web Application Security Project — the nonprofit that defines web security standards worldwide. Home of the OWASP Top 10 (must-know vulnerabilities), WSTG (testing guide), and dozens of free tools.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Industry Standard</span>
+            </div>
+          </a>
+
+          <a href="https://ippsec.rocks" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">IppSec.rocks</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Search engine for IppSec's HackTheBox video walkthroughs by technique. Type a tool or attack (e.g., "buffer overflow", "kerbrute") and jump to the exact timestamp where it's demonstrated.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-advanced">HTB Walkthroughs</span>
+            </div>
+          </a>
+
+          <a href="https://www.revshells.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">RevShells.com</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Reverse shell generator for every language and platform — bash, Python, PHP, PowerShell, and more. Enter your IP and port, select the shell type, and copy the payload. Indispensable for CTFs.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-advanced">CTF Tool</span>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════
+           SECTION 5 — YouTube Channels
+      ════════════════════════════════════════════════════ -->
+      <section class="res-section" aria-label="YouTube channels">
+        <h2 class="section-heading"><span>05 //</span> YouTube Channels Worth Following</h2>
+        <div class="res-grid">
+
+          <a href="https://www.youtube.com/@_JohnHammond" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">John Hammond</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">CTF walkthroughs, malware analysis, and career advice. His beginner-friendly explanations make complex topics accessible. One of the most respected voices in the security community. Start here.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Best for Beginners</span>
+            </div>
+          </a>
+
+          <a href="https://www.youtube.com/@ippsec" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">IppSec</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Methodical, in-depth HackTheBox walkthroughs. Watching IppSec is how most people level up their pentesting methodology. He narrates his thought process, not just the commands — that's the real value.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-advanced">HackTheBox Focus</span>
+            </div>
+          </a>
+
+          <a href="https://www.youtube.com/@LiveOverflow" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">LiveOverflow</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Deep dives into binary exploitation, web hacking, and browser security research. Some of the best low-level security content on the internet. His "How to Get Into CTFs" series is required viewing.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-advanced">Low-Level / Research</span>
+            </div>
+          </a>
+
+          <a href="https://www.youtube.com/@TCMSecurityAcademy" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">TCM Security</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Heath Adams covers practical ethical hacking, AD attacks, OSCP prep, and career advice. His full Practical Ethical Hacking course is partially available free on YouTube. Direct, no-BS teaching style.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Practical Focus</span>
+            </div>
+          </a>
+
+          <a href="https://www.youtube.com/@NetworkChuck" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">NetworkChuck</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">High-energy tutorials on networking, hacking, Linux, Python, and cloud. Great for absolute beginners who want an entertaining intro to concepts before going deeper. Excellent for visualizing how networks work.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Beginner Friendly</span>
+            </div>
+          </a>
+
+          <a href="https://www.youtube.com/@DavidBombal" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">David Bombal</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Networking fundamentals, Python for network engineers, ethical hacking, and cert prep (CCNA, CompTIA). Long-form interview content with industry experts. Great for understanding the networking side of security.</p>
+            <div class="res-card-footer">
+              <span class="res-tag tag-free">Free</span>
+              <span class="res-tag tag-beginner">Networking Focus</span>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════
+           SECTION 6 — Certification Roadmap
+      ════════════════════════════════════════════════════ -->
+      <section class="res-section" aria-label="Certification roadmap">
+        <h2 class="section-heading"><span>06 //</span> Certification Roadmap</h2>
+        <div class="card" style="margin-bottom:1rem;">
+          <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">Certifications signal your knowledge to employers. Here's a common progression path — you don't need all of them, just the ones relevant to your target role.</p>
+
+          <div class="cert-track cert-entry">
+            <p class="cert-track-label">Entry Level — Start Here</p>
+            <div class="cert-row">
+              <span class="cert-badge">CompTIA A+</span>
+              <span class="cert-arrow">→</span>
+              <span class="cert-badge">CompTIA Network+</span>
+              <span class="cert-arrow">→</span>
+              <span class="cert-badge">CompTIA Security+</span>
+              <span class="cert-arrow">→</span>
+              <span class="cert-badge">eJPT (free exam!)</span>
+              <span class="cert-arrow">→</span>
+              <span class="cert-badge">Google Cybersecurity</span>
+            </div>
+          </div>
+
+          <div class="cert-track cert-mid" style="margin-top:1.25rem;">
+            <p class="cert-track-label">Intermediate — Pick Your Path</p>
+            <div class="cert-row">
+              <span class="cert-badge">CEH</span>
+              <span class="cert-arrow">/</span>
+              <span class="cert-badge">PNPT (TCM)</span>
+              <span class="cert-arrow">/</span>
+              <span class="cert-badge">eCPPT (INE)</span>
+              <span class="cert-arrow">/</span>
+              <span class="cert-badge">CySA+</span>
+              <span class="cert-arrow">/</span>
+              <span class="cert-badge">PenTest+</span>
+            </div>
+          </div>
+
+          <div class="cert-track cert-advanced" style="margin-top:1.25rem;">
+            <p class="cert-track-label">Advanced — Industry Prestige</p>
+            <div class="cert-row">
+              <span class="cert-badge">OSCP</span>
+              <span class="cert-arrow">→</span>
+              <span class="cert-badge">OSEP</span>
+              <span class="cert-arrow">/</span>
+              <span class="cert-badge">CISSP</span>
+              <span class="cert-arrow">/</span>
+              <span class="cert-badge">GPEN / GWAPT</span>
+            </div>
+          </div>
+
+          <div class="callout callout-info" style="margin-top:1.5rem;">
+            💡 <strong>PNPT vs OSCP:</strong> TCM's PNPT (~$400) is a highly respected practical cert with a report submission. OSCP (~$1,500) is the gold standard for penetration testers. Do PNPT first — it's excellent preparation.
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════
+           SECTION 7 — Communities
+      ════════════════════════════════════════════════════ -->
+      <section class="res-section" aria-label="Communities">
+        <h2 class="section-heading"><span>07 //</span> Communities & News</h2>
+        <div class="res-grid">
+
+          <a href="https://www.reddit.com/r/netsec/" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">r/netsec</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Technical security news and research. High-quality discussion and link sharing. Also check r/cybersecurity (news), r/AskNetsec (Q&A), and r/HowToHack (beginner questions).</p>
+            <div class="res-card-footer"><span class="res-tag tag-free">Free</span></div>
+          </a>
+
+          <a href="https://discord.gg/tryhackme" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">TryHackMe Discord</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Active community of learners across all skill levels. Good for getting unstuck, finding study partners, and networking. Also check the HackTheBox and TCM Security Discord servers.</p>
+            <div class="res-card-footer"><span class="res-tag tag-free">Free</span></div>
+          </a>
+
+          <a href="https://www.darkreading.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Dark Reading</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Leading cybersecurity news publication covering threat intelligence, vulnerabilities, breaches, and industry trends. Reading security news keeps you aware of real-world threats and builds professional context.</p>
+            <div class="res-card-footer"><span class="res-tag tag-free">Free</span></div>
+          </a>
+
+          <a href="https://krebsonsecurity.com" target="_blank" rel="noopener noreferrer" class="res-card">
+            <div class="res-card-header">
+              <span class="res-card-name">Krebs on Security</span>
+              <span class="res-link-arrow" aria-hidden="true">↗</span>
+            </div>
+            <p class="res-card-desc">Investigative cybersecurity journalism by Brian Krebs. Deep reporting on data breaches, cybercrime, and the underground economy. Reading Krebs gives you real-world context that no course can provide.</p>
+            <div class="res-card-footer"><span class="res-tag tag-free">Free</span></div>
+          </a>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ─── Footer ────────────────────────────────────────────── -->
+  <footer>
+    CyberUnit @ UNG | Cybersecurity Intro Class | Built with Node.js + Express
+  </footer>
+
+  <script>
+    // Hamburger menu (same logic as main pages)
+    const btn = document.getElementById('hamburger');
+    const links = document.getElementById('navLinks');
+    if (btn && links) {
+      btn.addEventListener('click', () => {
+        const open = links.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+      });
+      document.addEventListener('click', (e) => {
+        if (!btn.contains(e.target) && !links.contains(e.target)) {
+          links.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

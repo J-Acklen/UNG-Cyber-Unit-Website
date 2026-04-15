@@ -1,0 +1,510 @@
+================================================================================
+  CYBERSECURITY BASICS — NPM WEB APP
+  To-Do List for Claude Code
+  Audience: Cybersecurity beginners / college intro class
+  Stack: Node.js + Express (backend) + Vanilla HTML/CSS/JS (frontend)
+================================================================================
+
+GOAL:
+  Build a multi-page, interactive educational web app that teaches the absolute
+  basics of cybersecurity to complete beginners. The app should feel like a
+  polished "field guide" — dark terminal aesthetic, hacker-green accents,
+  monospace typography, clean layout. Every section should teach one concept
+  with a short explanation, a visual/diagram, and a hands-on mini-demo or quiz.
+
+================================================================================
+SECTION 1 — PROJECT SETUP
+================================================================================
+
+[ ] Initialize the project
+    - Run: npm init -y
+    - Create the following folder structure:
+        /cybersec-basics
+          /public
+            /css
+              style.css
+            /js
+              main.js
+            /images          <-- placeholder folder for topic images (see Section 9)
+          /views
+            index.html
+            topic.html       <-- reusable template for individual topic pages
+          server.js
+          package.json
+          README.md
+          toDoList.txt       <-- keep this file in root for reference
+
+[ ] Install dependencies
+    - express              (web server)
+    - nodemon              (dev auto-reload, install as devDependency)
+
+[ ] Configure package.json scripts
+    - "start": "node server.js"
+    - "dev": "nodemon server.js"
+
+[ ] Build server.js
+    - Serve /public as static files
+    - Serve all .html files from /views
+    - Single GET route "/" → serves index.html
+    - Single GET route "/topic/:id" → serves topic.html
+    - Run on port 3000
+    - Log "Server running at http://localhost:3000" on startup
+
+================================================================================
+SECTION 2 — GLOBAL DESIGN SYSTEM (style.css)
+================================================================================
+
+[ ] Color palette (CSS variables in :root)
+    --bg:          #0d0d0d       (near-black background)
+    --surface:     #141414       (card/panel background)
+    --border:      #1f1f1f       (subtle borders)
+    --accent:      #00ff88       (hacker green — primary accent)
+    --accent-dim:  #00cc6a       (dimmer green for hover states)
+    --text:        #e0e0e0       (primary text)
+    --text-muted:  #666666       (secondary/helper text)
+    --danger:      #ff4444       (red for "bad" examples, warnings)
+    --warn:        #ffaa00       (amber for caution items)
+    --info:        #4488ff       (blue for informational callouts)
+
+[ ] Typography
+    - Import "Share Tech Mono" from Google Fonts (monospace, hacker feel)
+    - Import "Exo 2" from Google Fonts (clean sans-serif for body copy)
+    - Headings: Share Tech Mono
+    - Body/paragraphs: Exo 2
+    - Code blocks: Share Tech Mono, background #1a1a1a, border-left 3px solid --accent
+
+[ ] Global resets + base styles
+    - box-sizing: border-box on everything
+    - Dark scrollbar (webkit-scrollbar styled to match theme)
+    - Smooth scroll behavior on html element
+    - Selection highlight: bg --accent, color --bg
+
+[ ] Layout
+    - Fixed top navbar (site title left, nav links right)
+    - Main content area: max-width 960px, centered, padding 2rem
+    - Footer: centered, muted text, "Built for UNG Cybersecurity Intro"
+
+[ ] Components to style
+    - .card           → surface bg, border, border-radius 6px, padding 1.5rem
+    - .badge          → inline pill label (use for difficulty: Beginner / Intermediate)
+    - .btn            → accent-colored button with hover glow effect
+    - .code-block     → monospace pre/code styled box
+    - .callout        → colored left-border box (variants: info, warn, danger)
+    - .topic-grid     → CSS grid, 3 columns on desktop, 1 on mobile (homepage cards)
+    - .progress-bar   → thin green bar showing quiz score or reading progress
+    - .quiz-box       → styled container for multiple-choice questions
+
+[ ] Animations
+    - Fade-in on page load (opacity 0 → 1, translateY 10px → 0, 0.4s ease)
+    - Hover lift on .card (translateY -3px, box-shadow glow)
+    - Typewriter effect on hero headline (CSS or JS, --accent color cursor blink)
+    - Smooth underline slide on nav links
+
+================================================================================
+SECTION 3 — HOMEPAGE (index.html)
+================================================================================
+
+[ ] Navbar
+    - Left: "[ CyberBasics ]" as site logo/title in accent color
+    - Right: links → Home | Topics | About
+    - Active state highlighted with accent underline
+
+[ ] Hero section
+    - Big typewriter headline: "Learn Cybersecurity. One Concept at a Time."
+    - Subheadline: "A beginner's field guide to staying safe in the digital world."
+    - Two buttons: "Start Learning →" (scrolls to topic grid) and "What is Cybersecurity?" (links to topic 1)
+    - Subtle animated grid/dot pattern in background (CSS only)
+
+[ ] Topics Grid
+    - Section heading: "// Core Topics"
+    - Render one .card per topic (see Section 4 for topic list)
+    - Each card contains:
+        • Topic icon (emoji or simple SVG)
+        • Topic title
+        • One-sentence description
+        • Difficulty badge (Beginner)
+        • "Explore →" link to /topic/:id
+
+[ ] Stats bar (simple, decorative)
+    - "10 Topics  |  10 Quizzes  |  0 Prerequisites Required"
+
+[ ] Footer
+    - "CyberBasics | UNG Cybersecurity Intro Class | Built with Node.js + Express"
+
+================================================================================
+SECTION 4 — TOPIC LIST (10 topics, each gets its own page)
+================================================================================
+
+Build a topics data array in server.js (or a topics.json file) with the
+following topics. Each topic has: id, title, icon, shortDesc, fullContent,
+image (filename from /public/images/), and quiz questions.
+
+--------------------------------------------------
+TOPIC 01 — What is Cybersecurity?
+--------------------------------------------------
+[ ] Explain what cybersecurity is in plain English
+[ ] Cover the CIA Triad: Confidentiality, Integrity, Availability
+    - Use a visual diagram (HTML/CSS) showing three labeled boxes
+[ ] Real-world example: "Why does your bank have a lock icon in the browser?"
+[ ] Image: cia-triad.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: Which part of the CIA Triad means only authorized people can see data?
+        A) Availability  B) Integrity  C) Confidentiality ✓  D) Authentication
+    Q2: What does "Integrity" mean in cybersecurity?
+        A) Data is always fast  B) Data is accurate and unmodified ✓  C) Data is encrypted  D) Data is deleted
+    Q3: What is cybersecurity primarily trying to protect?
+        A) Hardware prices  B) Internet speed  C) Digital systems, networks, and data ✓  D) Phone batteries
+
+--------------------------------------------------
+TOPIC 02 — Types of Threats
+--------------------------------------------------
+[ ] Explain the most common threat categories with icons:
+    🦠 Malware      — software designed to damage or gain access
+    🎣 Phishing     — fake emails/sites tricking you into giving info
+    🔐 Ransomware   — encrypts your files and demands payment
+    👤 Social Eng.  — manipulating people instead of systems
+    💣 DoS/DDoS     — flooding a server to take it offline
+    🕵️ Man-in-Middle — secretly intercepting communications
+[ ] Style as a visual "threat card" grid (icon + name + 1-sentence desc)
+[ ] Real-world example: "Have you ever gotten a fake Netflix email?"
+[ ] Image: threat-types.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: What is phishing?  
+        A) Hacking a Wi-Fi router  B) A type of firewall  C) Tricking users into revealing sensitive info ✓  D) Encrypting files for ransom
+    Q2: What does ransomware do?
+        A) Speeds up your PC  B) Sends spam emails  C) Locks your files and demands payment ✓  D) Steals your browser history
+    Q3: What is a DDoS attack?
+        A) Guessing passwords  B) Overwhelming a server with traffic ✓  C) Stealing credit cards  D) Installing a keylogger
+
+--------------------------------------------------
+TOPIC 03 — Passwords & Authentication
+--------------------------------------------------
+[ ] Explain what makes a strong vs weak password
+[ ] Visual: side-by-side comparison table
+    Bad: "password123", "abc", "john1990"
+    Good: "T!g3r$unR1se#42", "correct-horse-battery-staple"
+[ ] Explain password length > complexity (entropy concept, simplified)
+[ ] Explain Multi-Factor Authentication (MFA): something you know, have, are
+[ ] Explain password managers (what they are, why to use one)
+[ ] Interactive demo: Password Strength Checker
+    - Text input field on the page
+    - JS evaluates: length, uppercase, lowercase, numbers, symbols
+    - Shows live strength bar: Weak (red) → Fair (amber) → Strong (green)
+    - Shows feedback tips below the bar
+[ ] Image: mfa-diagram.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: Which password is strongest?
+        A) password123  B) fluffy  C) T!g3r$unR1se#42 ✓  D) 12345678
+    Q2: What does MFA stand for?
+        A) Multiple File Access  B) Multi-Factor Authentication ✓  C) Main Firewall App  D) Managed File Archive
+    Q3: What is a password manager?
+        A) A person who resets passwords  B) A browser built-in feature only  C) A tool that generates and stores strong passwords securely ✓  D) A type of antivirus
+
+--------------------------------------------------
+TOPIC 04 — Phishing & Social Engineering
+--------------------------------------------------
+[ ] Deep dive on phishing specifically (most common attack vector)
+[ ] Show a visual of a fake vs real email side-by-side
+    Highlight red flags: mismatched sender, urgency language, suspicious link
+[ ] Explain spear phishing (targeted) vs generic phishing
+[ ] Explain vishing (voice phishing) and smishing (SMS phishing)
+[ ] Pretexting: creating a fake scenario to extract info
+[ ] "Red flags to look for" checklist (styled as a .callout with warn color)
+[ ] Image: phishing-example.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: What is spear phishing?
+        A) Attacking fish in the ocean  B) A targeted phishing attack aimed at a specific person ✓  C) A firewall type  D) Random mass phishing
+    Q2: You get an email saying "Your account will be deleted in 24 hours — click now!" This is likely...
+        A) A legitimate notice  B) A system error  C) A phishing attempt using urgency ✓  D) A software update
+    Q3: What is "vishing"?
+        A) A type of virus  B) Phishing via voice/phone calls ✓  C) A VPN attack  D) Visual hacking
+
+--------------------------------------------------
+TOPIC 05 — Networking Basics for Security
+--------------------------------------------------
+[ ] Explain: IP addresses (public vs private), ports, protocols
+[ ] Explain: What is a firewall and what does it do?
+[ ] Explain: What is a VPN and why would you use one?
+[ ] Explain: HTTP vs HTTPS — why the padlock matters
+[ ] Simple visual: "Your Device → Router → Firewall → Internet" flow diagram (HTML/CSS)
+[ ] Image: network-diagram.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: What does HTTPS provide that HTTP does not?
+        A) Faster loading  B) Ad blocking  C) Encrypted communication ✓  D) Larger file support
+    Q2: What is a firewall?
+        A) A physical wall in a data center  B) A system that monitors and controls network traffic ✓  C) A type of antivirus  D) An internet speed booster
+    Q3: What does a VPN primarily do?
+        A) Speed up your internet  B) Block all ads  C) Encrypt your connection and mask your IP ✓  D) Delete cookies
+
+--------------------------------------------------
+TOPIC 06 — Encryption Basics
+--------------------------------------------------
+[ ] Explain what encryption is (scrambling data so only the right person can read it)
+[ ] Symmetric vs Asymmetric encryption (plain English + simple analogy)
+    Symmetric: same key locks and unlocks (like a padlock)
+    Asymmetric: public key locks, private key unlocks (like a mailbox slot)
+[ ] Mention common algorithms: AES, RSA (names only, no math)
+[ ] Explain hashing vs encryption (one-way vs two-way)
+[ ] Interactive demo: Simple Caesar Cipher
+    - Input box: type a message
+    - Slider: choose shift (1–25)
+    - Output box: shows "encrypted" text live
+    - Decode button: reverses it
+    - Note: "This is a toy cipher — real encryption is FAR more complex!"
+[ ] Image: encryption-keys.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: What is the main difference between encryption and hashing?
+        A) They are the same thing  B) Encryption is reversible, hashing is not ✓  C) Hashing is reversible, encryption is not  D) Neither can be reversed
+    Q2: In asymmetric encryption, what does your public key do?
+        A) Decrypts messages sent to you  B) Encrypts messages sent TO you ✓  C) Signs your identity  D) Generates new keys
+    Q3: Which of these is a well-known symmetric encryption algorithm?
+        A) RSA  B) SHA-256  C) AES ✓  D) MD5
+
+--------------------------------------------------
+TOPIC 07 — Safe Browsing & Digital Hygiene
+--------------------------------------------------
+[ ] Explain browser security basics: cookies, trackers, HTTPS
+[ ] Explain what to look for in a URL before clicking (domain spoofing: paypa1.com)
+[ ] Explain software updates: why patching matters (CVEs simplified)
+[ ] Explain public Wi-Fi risks (sniffing, evil twin APs)
+[ ] "Digital Hygiene Checklist" — styled interactive checklist
+    Users can check off items:
+    ☐ I use HTTPS websites when possible
+    ☐ I keep my OS and apps updated
+    ☐ I use a different password for every account
+    ☐ I have MFA enabled on important accounts
+    ☐ I don't click links in unexpected emails
+    ☐ I lock my screen when stepping away
+    ☐ I avoid using public Wi-Fi for sensitive tasks
+    (JS saves checkmarks to localStorage, shows score "X/7 habits secured")
+[ ] Image: safe-browsing.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: Why should you be cautious on public Wi-Fi?
+        A) It is always slower  B) It may cost money  C) Attackers can intercept unencrypted traffic ✓  D) It blocks HTTPS
+    Q2: What is a "domain spoofing" attack?
+        A) Registering a look-alike domain to fool users ✓  B) Hacking the DNS server  C) Redirecting all traffic to one IP  D) Stealing SSL certificates
+    Q3: Why are software updates important for security?
+        A) They make apps look nicer  B) They add new features only  C) They patch known vulnerabilities ✓  D) They speed up your CPU
+
+--------------------------------------------------
+TOPIC 08 — Linux & Command Line Basics for Security
+--------------------------------------------------
+[ ] Why security professionals use Linux (brief, motivating)
+[ ] Explain the terminal/command line at a very high level
+[ ] Show a styled "terminal window" component (fake terminal, CSS only)
+    Display a series of common commands with explanations:
+      ls        → list files in directory
+      pwd       → show current directory path
+      cd        → change directory
+      cat       → display file contents
+      grep      → search for text in files
+      chmod     → change file permissions
+      whoami    → show current user
+      ifconfig  → show network interfaces (or ip a)
+      ps aux    → list running processes
+      sudo      → run command as administrator
+[ ] Explain file permissions briefly: rwx, owner/group/other
+[ ] Note: "You'll use these commands in later cybersecurity courses!"
+[ ] Image: linux-terminal.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: What does the "ls" command do in Linux?
+        A) Log out the user  B) List files and directories ✓  C) Load a script  D) Link two systems
+    Q2: What does "chmod" do?
+        A) Changes directory  B) Checks hardware modules  C) Changes file permissions ✓  D) Chains commands
+    Q3: What does "sudo" do?
+        A) Shows disk usage  B) Runs a command with superuser (admin) privileges ✓  C) Starts a new user session  D) Searches for updates
+
+--------------------------------------------------
+TOPIC 09 — Incident Response Basics
+--------------------------------------------------
+[ ] What is an "incident" in cybersecurity?
+[ ] Simple IR lifecycle (styled as a circular/step diagram in HTML/CSS):
+    1. Preparation → 2. Detection → 3. Containment → 4. Eradication → 5. Recovery → 6. Lessons Learned
+[ ] Who responds to incidents? (SOC, IR team, CISO explained simply)
+[ ] What YOU should do if you think you've been hacked:
+    - Disconnect from internet
+    - Change passwords from a clean device
+    - Notify your IT/security team
+    - Don't delete evidence
+[ ] Image: incident-response.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: What is the FIRST step in the incident response lifecycle?
+        A) Recovery  B) Detection  C) Preparation ✓  D) Eradication
+    Q2: If you suspect your account was hacked, what should you do FIRST?
+        A) Delete all files  B) Post about it on social media  C) Change your passwords from a clean device ✓  D) Ignore it
+    Q3: What does SOC stand for in cybersecurity?
+        A) System Operations Center  B) Security Operations Center ✓  C) Software Output Check  D) Secure Online Connection
+
+--------------------------------------------------
+TOPIC 10 — Careers in Cybersecurity
+--------------------------------------------------
+[ ] Overview: the field is huge and growing — many paths exist
+[ ] List of roles with 1-sentence descriptions styled as cards:
+    🔴 Penetration Tester   — ethical hacker who finds vulnerabilities before attackers do
+    🔵 Security Analyst     — monitors systems and responds to threats (SOC)
+    🟡 Security Engineer    — builds and maintains security tools and infrastructure
+    🟢 Forensic Analyst     — investigates incidents and recovers digital evidence
+    🟣 GRC Analyst          — handles compliance, policies, and risk management
+    ⚪ Security Architect    — designs secure systems and networks at a high level
+[ ] Mention certifications for beginners: CompTIA Security+, CompTIA A+, Google Cybersecurity Certificate
+[ ] Mention competitions: NCL, picoCTF, CTFtime.org — "The best way to learn is by doing!"
+[ ] Call to action: "Ready to go deeper? Check out these resources" with 3 real links:
+    - https://tryhackme.com
+    - https://picoctf.org
+    - https://www.cybrary.it
+[ ] Image: cyber-careers.png (see Section 9)
+[ ] Quiz (3 questions):
+    Q1: What does a penetration tester do?
+        A) Repairs network cables  B) Writes company security policies  C) Ethically hacks systems to find vulnerabilities ✓  D) Monitors server uptime
+    Q2: Which certification is commonly recommended for cybersecurity beginners?
+        A) CISSP  B) OSCP  C) CompTIA Security+ ✓  D) CISA
+    Q3: What is NCL?
+        A) National Code Library  B) Network Control Layer  C) National Cyber League — a cybersecurity competition ✓  D) New Computer Language
+
+================================================================================
+SECTION 5 — INDIVIDUAL TOPIC PAGE (topic.html + main.js)
+================================================================================
+
+[ ] topic.html template structure:
+    - Navbar (same as homepage)
+    - Breadcrumb: "Home > Topics > [Topic Name]"
+    - Topic header: title, difficulty badge, estimated read time ("~5 min read")
+    - Topic image (from /public/images/ — see Section 9)
+    - Content sections rendered from topics data
+    - Interactive demo section (if applicable — see per-topic above)
+    - Quiz section (see Section 6)
+    - Navigation: "← Previous Topic" and "Next Topic →" buttons
+    - Footer (same as homepage)
+
+[ ] main.js — client-side JS responsibilities:
+    - Fetch topic data from server via GET /api/topic/:id
+    - Dynamically render topic content into topic.html
+    - Handle quiz logic (see Section 6)
+    - Handle Caesar cipher demo (Topic 06)
+    - Handle password strength checker (Topic 03)
+    - Handle hygiene checklist with localStorage (Topic 07)
+    - Typewriter effect for homepage hero
+    - Smooth scroll for anchor links
+
+================================================================================
+SECTION 6 — QUIZ SYSTEM
+================================================================================
+
+[ ] Each topic page has a quiz section at the bottom
+[ ] "// Knowledge Check" section heading
+[ ] Display 3 multiple-choice questions per topic
+[ ] Each question:
+    - Question text in a .quiz-box
+    - 4 radio button answer choices (A/B/C/D styled as custom styled buttons)
+    - On selection: immediate feedback
+        ✓ Correct → green highlight + "Correct! [brief explanation]"
+        ✗ Wrong   → red highlight + "Not quite. The answer is [X] because..."
+[ ] Score tracker at bottom of quiz:
+    - "You got X / 3 correct"
+    - If 3/3: "Perfect score! 🎉" in accent green
+    - If 2/3: "Nice work! Review the topic and try again."
+    - If 0–1: "Keep studying — you've got this!"
+[ ] "Try Again" button resets quiz without reloading page
+[ ] Score is NOT persisted — each visit starts fresh (keep it simple)
+
+================================================================================
+SECTION 7 — API ROUTES (server.js)
+================================================================================
+
+[ ] GET /                     → serve index.html
+[ ] GET /topic/:id            → serve topic.html
+[ ] GET /api/topics           → return JSON array of all topics (id, title, shortDesc, icon, image)
+[ ] GET /api/topic/:id        → return full JSON for a single topic (all content + quiz)
+[ ] 404 handler               → serve a simple styled 404 page
+
+================================================================================
+SECTION 8 — RESPONSIVE DESIGN
+================================================================================
+
+[ ] All layouts must work on:
+    - Desktop (1200px+)   → 3-column topic grid
+    - Tablet (768px)      → 2-column topic grid
+    - Mobile (480px)      → 1-column, stacked nav, larger tap targets
+
+[ ] Mobile nav: collapse links into a hamburger menu (JS toggle)
+[ ] Font sizes scale down gracefully on small screens
+[ ] Images are responsive (max-width: 100%, height: auto)
+[ ] Touch-friendly buttons (min 44px tap target)
+
+================================================================================
+SECTION 9 — IMAGES
+================================================================================
+
+[ ] Create a /public/images/ directory to store all topic images
+[ ] For each topic, source or generate one relevant educational image.
+    Suggested filenames and what each should depict:
+
+    cia-triad.png         → Diagram or icon set for Confidentiality/Integrity/Availability
+    threat-types.png      → Icons or visual grid of malware, phishing, ransomware, etc.
+    mfa-diagram.png       → Flow diagram showing phone/email/password MFA factors
+    phishing-example.png  → Annotated example of a phishing email with red flags labeled
+    network-diagram.png   → Simple diagram: device → router → firewall → internet
+    encryption-keys.png   → Visual of public/private key pairs or lock-and-key metaphor
+    safe-browsing.png     → Browser with HTTPS lock icon, shield, or safety checklist
+    linux-terminal.png    → Dark terminal screenshot or illustration with commands visible
+    incident-response.png → Circular lifecycle diagram of the 6 IR stages
+    cyber-careers.png     → Icons or illustration of different cybersecurity roles
+
+[ ] Image display rules:
+    - Display the relevant image at the TOP of each topic page, below the title
+    - Images should be styled: max-width 100%, border-radius 8px, subtle border
+    - Add an alt attribute to every <img> tag for accessibility
+    - If an image file is missing, show a styled placeholder div with the topic icon
+
+[ ] Image sourcing options (pick one per image):
+    Option A: Use freely licensed images from https://unsplash.com or https://pixabay.com
+    Option B: Use SVG illustrations generated inline (no external files needed)
+    Option C: Use placeholder images from https://placehold.co (e.g. https://placehold.co/800x300/141414/00ff88?text=CIA+Triad) as fallbacks
+
+[ ] RECOMMENDED: For each topic, generate a simple inline SVG illustration
+    directly in the HTML/JS render function so no external files are required.
+    Style all SVGs to match the dark theme (bg #141414, strokes in --accent green).
+
+================================================================================
+SECTION 10 — README.md
+================================================================================
+
+[ ] Write a README.md with:
+    - Project title and description
+    - Screenshot placeholder (add later)
+    - Prerequisites: Node.js v18+
+    - Installation steps:
+        git clone <repo>
+        cd cybersec-basics
+        npm install
+        npm run dev
+    - Usage: open http://localhost:3000
+    - Topics covered (list all 10)
+    - Tech stack
+    - License: MIT
+
+================================================================================
+SECTION 11 — POLISH & FINAL CHECKS
+================================================================================
+
+[ ] Add a favicon (simple lock emoji or green shield SVG)
+[ ] Verify all 10 topic pages render correctly
+[ ] Verify all 10 quizzes work (correct/incorrect feedback, score display, reset)
+[ ] Verify Caesar cipher demo works (encode + decode)
+[ ] Verify password strength checker updates live
+[ ] Verify digital hygiene checklist saves to localStorage
+[ ] Verify all navigation links work (no broken routes)
+[ ] Verify API endpoints return correct JSON
+[ ] Verify responsive layout on mobile breakpoints
+[ ] Verify all images display (or fallback placeholder shows)
+[ ] Check browser console for JS errors — fix any found
+[ ] Check all external links open in a new tab (target="_blank" rel="noopener")
+[ ] Add aria-labels to icon-only buttons for accessibility
+[ ] Final review: does the app look and feel like a polished educational tool?
+
+================================================================================
+  END OF TO-DO LIST
+  Estimated scope: ~800–1200 lines of code across all files
+  Difficulty for a beginner student: should be completable in one sitting
+  with Claude Code guidance.
+================================================================================

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberUnit @ UNG — Topic</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="/#topics">Topics</a></li>
+        <li><a href="/resources">Resources</a></li>
+        <li><a href="/#about">About</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+    <div class="container topic-container">
+
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span>›</span>
+        <a href="/#topics">Topics</a>
+        <span>›</span>
+        <span id="breadcrumbTopic">Loading...</span>
+      </nav>
+
+      <!-- Topic Header (full width, above the two-column layout) -->
+      <header class="topic-header" id="topicHeader">
+        <div class="topic-header-meta">
+          <span class="topic-icon-large" id="topicIcon" aria-hidden="true"></span>
+          <h1 class="topic-title" id="topicTitle">Loading...</h1>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+          <span class="badge badge-beginner" id="topicDifficulty">Beginner</span>
+          <span class="read-time" id="topicReadTime"></span>
+        </div>
+      </header>
+
+      <!-- Two-column layout: main content + sticky TOC sidebar -->
+      <div class="topic-layout">
+
+        <!-- Left: main content column -->
+        <div class="topic-main">
+
+          <!-- Topic Illustration -->
+          <div id="topicIllustration"></div>
+
+          <!-- Topic Content -->
+          <article class="topic-content" id="topicContent" aria-label="Topic content">
+            <div style="color:var(--text-muted); font-family:'Share Tech Mono',monospace; padding:2rem 0; text-align:center;">
+              Loading topic...
+            </div>
+          </article>
+
+          <!-- Quiz Section -->
+          <section id="quizSection" aria-label="Knowledge check quiz">
+            <h2 class="section-heading"><span>//</span> Knowledge Check</h2>
+            <div id="quizContainer"></div>
+            <div class="quiz-score" id="quizScore" style="display:none;" aria-live="polite">
+              <div class="quiz-score-num" id="quizScoreNum"></div>
+              <div class="quiz-score-msg" id="quizScoreMsg"></div>
+              <button class="btn" id="tryAgainBtn" style="margin-top:1rem;" aria-label="Reset quiz and try again">Try Again</button>
+            </div>
+          </section>
+
+          <!-- Topic Navigation -->
+          <nav class="topic-nav" id="topicNav" aria-label="Topic navigation">
+            <div id="prevLink"></div>
+            <div class="spacer"></div>
+            <div id="nextLink"></div>
+          </nav>
+
+        </div><!-- /.topic-main -->
+
+        <!-- Right: sticky table of contents -->
+        <aside class="toc" id="toc" aria-label="Table of contents">
+          <!-- populated by main.js after topic data loads -->
+        </aside>
+
+      </div><!-- /.topic-layout -->
+
+    </div>
+  </main>
+
+  <!-- ─── Footer ────────────────────────────────────────────── -->
+  <footer>
+    CyberUnit @ UNG | Cybersecurity Intro Class | Built with Node.js + Express
+  </footer>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>
