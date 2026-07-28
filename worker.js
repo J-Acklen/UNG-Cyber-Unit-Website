@@ -2427,6 +2427,10 @@ export default {
         'User-agent: *',
         'Allow: /',
         'Disallow: /api/',
+        // The PDF is also reachable at its raw static-asset path, which duplicates
+        // the canonical /sop URL with no way to signal a canonical (PDFs can't
+        // carry a <link rel="canonical">). Keep crawlers off the raw file.
+        'Disallow: /Cyber_Unit_SOP.pdf',
         '',
         'Sitemap: https://ungcyberunit.org/sitemap.xml',
         '',
@@ -2521,8 +2525,11 @@ export default {
           headers.set('Cache-Control', 'no-store');
 
           // Inject per-topic SEO metadata into the shared topic.html head.
-          const topic = topicPageMatch ? topics.find(t => t.id === path.split('/').pop()) : null;
-          if (topic) {
+          // An unknown topic id must 404, not silently serve the generic
+          // shell as a 200 (that's a soft 404 — bad for search indexing).
+          if (topicPageMatch) {
+            const topic = topics.find(t => t.id === path.split('/').pop());
+            if (!topic) return notFoundResponse();
             const html = (await assetResponse.text())
               .replace('<title>CyberUnit @ UNG — Topic</title>', topicMetaTags(topic));
             headers.delete('Content-Length');
