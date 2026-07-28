@@ -1260,8 +1260,8 @@ function updateAuthNav() {
   if (!navItem) return;
 
   // Single ☰ menu: Beginner Pathway, Join Room, and Profile for everyone,
-  // role-gated panels, and a guest login for signed-out visitors. Server routes
-  // still enforce roles; this gating only controls visibility.
+  // plus role-gated panels. Server routes still enforce roles; this gating
+  // only controls visibility. Guest login lives in the Sign In modal instead.
   const menuItems = [
     `<a href="/start" class="nav-dropdown-item">Beginner Pathway</a>`,
     `<a href="/quiz" class="nav-dropdown-item">Join Room</a>`,
@@ -1269,7 +1269,6 @@ function updateAuthNav() {
     `<a href="/profile" class="nav-dropdown-item">Profile</a>`,
     isInstructor() ? `<a href="/instructor" class="nav-dropdown-item">Instructor Panel</a>` : '',
     currentUser?.role === 'admin' ? `<a href="/admin" class="nav-dropdown-item nav-dropdown-item--danger">Admin Panel</a>` : '',
-    !currentUser ? `<button type="button" class="nav-dropdown-item nav-dropdown-item--button" id="guestLoginItem">Continue as Guest</button>` : '',
   ].filter(Boolean).join('');
 
   const menuBtn = `<div class="nav-dropdown" id="navMenuDropdown">
@@ -1289,7 +1288,6 @@ function updateAuthNav() {
       ${menuBtn}
       <button class="btn btn-sm" id="openAuthBtn">Sign In</button>`;
     document.getElementById('openAuthBtn').addEventListener('click', () => openAuthModal('login'));
-    document.getElementById('guestLoginItem')?.addEventListener('click', handleGuestLogin);
   }
 
   wireNavDropdown('navMenuBtn', 'navMenuList');
@@ -1300,6 +1298,7 @@ async function handleGuestLogin() {
     const res = await fetch('/api/auth/guest', { method: 'POST' });
     if (!res.ok) throw new Error();
     currentUser = await res.json();
+    closeAuthModal();
     updateAuthNav();
     window.location.reload();
   } catch {
@@ -1442,6 +1441,8 @@ function injectAuthModal() {
         <p class="form-error" id="registerError" aria-live="polite" hidden></p>
         <button type="submit" class="btn" style="width:100%;margin-top:0.25rem">Create Account</button>
       </form>
+      <div class="modal-divider"><span>or</span></div>
+      <button type="button" class="btn" id="guestLoginBtn" style="width:100%">Continue as Guest</button>
     </div>`;
   document.body.appendChild(modal);
 
@@ -1453,6 +1454,7 @@ function injectAuthModal() {
   });
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
   document.getElementById('registerForm').addEventListener('submit', handleRegister);
+  document.getElementById('guestLoginBtn').addEventListener('click', handleGuestLogin);
 }
 
 async function handleLogin(e) {
