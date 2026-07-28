@@ -115,6 +115,13 @@
       font-size: 0.82rem;
       color: var(--text);
       white-space: nowrap;
+      text-decoration: none;
+      display: inline-block;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    a.cert-badge:hover, a.cert-badge:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .cert-arrow {
       color: var(--text-muted);
@@ -706,43 +713,45 @@
           <div class="cert-track cert-entry">
             <p class="cert-track-label">Entry Level — Start Here</p>
             <div class="cert-row">
-              <span class="cert-badge">CompTIA A+</span>
+              <a class="cert-badge" href="https://www.comptia.org/certifications/a" target="_blank" rel="noopener noreferrer">CompTIA A+</a>
               <span class="cert-arrow">→</span>
-              <span class="cert-badge">CompTIA Network+</span>
+              <a class="cert-badge" href="https://www.comptia.org/certifications/network" target="_blank" rel="noopener noreferrer">CompTIA Network+</a>
               <span class="cert-arrow">→</span>
-              <span class="cert-badge">CompTIA Security+</span>
+              <a class="cert-badge" href="https://www.comptia.org/certifications/security" target="_blank" rel="noopener noreferrer">CompTIA Security+</a>
               <span class="cert-arrow">→</span>
-              <span class="cert-badge">eJPT (free exam!)</span>
+              <a class="cert-badge" href="https://security.ine.com/certifications/ejpt-certification/" target="_blank" rel="noopener noreferrer">eJPT (free exam!)</a>
               <span class="cert-arrow">→</span>
-              <span class="cert-badge">Google Cybersecurity</span>
+              <a class="cert-badge" href="https://grow.google/certificates/cybersecurity/" target="_blank" rel="noopener noreferrer">Google Cybersecurity</a>
             </div>
           </div>
 
           <div class="cert-track cert-mid" style="margin-top:1.25rem;">
             <p class="cert-track-label">Intermediate — Pick Your Path</p>
             <div class="cert-row">
-              <span class="cert-badge">CEH</span>
+              <a class="cert-badge" href="https://www.eccouncil.org/train-certify/certified-ethical-hacker-ceh/" target="_blank" rel="noopener noreferrer">CEH</a>
               <span class="cert-arrow">/</span>
-              <span class="cert-badge">PNPT (TCM)</span>
+              <a class="cert-badge" href="https://certifications.tcm-sec.com/pnpt/" target="_blank" rel="noopener noreferrer">PNPT (TCM)</a>
               <span class="cert-arrow">/</span>
-              <span class="cert-badge">eCPPT (INE)</span>
+              <a class="cert-badge" href="https://security.ine.com/certifications/ecppt-certification/" target="_blank" rel="noopener noreferrer">eCPPT (INE)</a>
               <span class="cert-arrow">/</span>
-              <span class="cert-badge">CySA+</span>
+              <a class="cert-badge" href="https://www.comptia.org/certifications/cybersecurity-analyst" target="_blank" rel="noopener noreferrer">CySA+</a>
               <span class="cert-arrow">/</span>
-              <span class="cert-badge">PenTest+</span>
+              <a class="cert-badge" href="https://www.comptia.org/certifications/pentest" target="_blank" rel="noopener noreferrer">PenTest+</a>
             </div>
           </div>
 
           <div class="cert-track cert-advanced" style="margin-top:1.25rem;">
             <p class="cert-track-label">Advanced — Industry Prestige</p>
             <div class="cert-row">
-              <span class="cert-badge">OSCP</span>
+              <a class="cert-badge" href="https://www.offsec.com/courses/pen-200/" target="_blank" rel="noopener noreferrer">OSCP</a>
               <span class="cert-arrow">→</span>
-              <span class="cert-badge">OSEP</span>
+              <a class="cert-badge" href="https://www.offsec.com/courses/pen-300/" target="_blank" rel="noopener noreferrer">OSEP</a>
               <span class="cert-arrow">/</span>
-              <span class="cert-badge">CISSP</span>
+              <a class="cert-badge" href="https://www.isc2.org/certifications/cissp" target="_blank" rel="noopener noreferrer">CISSP</a>
               <span class="cert-arrow">/</span>
-              <span class="cert-badge">GPEN / GWAPT</span>
+              <a class="cert-badge" href="https://www.giac.org/certifications/penetration-tester-gpen/" target="_blank" rel="noopener noreferrer">GPEN</a>
+              <span class="cert-arrow">/</span>
+              <a class="cert-badge" href="https://www.giac.org/certifications/web-application-penetration-tester-gwapt/" target="_blank" rel="noopener noreferrer">GWAPT</a>
             </div>
           </div>
 
