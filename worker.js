@@ -2352,7 +2352,7 @@ export default {
       if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
 
       const user = await env.DB.prepare(
-        'SELECT id, username, role, avatar, created_at FROM users WHERE id = ?'
+        'SELECT id, username, role, avatar, created_at, is_public FROM users WHERE id = ?'
       ).bind(session.sub).first();
       if (!user) return jsonResponse({ error: 'Not authenticated' }, 401);
 
@@ -2383,10 +2383,57 @@ export default {
         role: user.role ?? 'member',
         avatar: user.avatar ?? null,
         created_at: user.created_at,
+        isPublic: !!user.is_public,
         roomAttempts: roomAttempts ?? [],
         badges: pathwayBadges(doneTopics),
         rank,
         roomRank,
+      });
+    }
+
+    // POST /api/profile/visibility — toggle whether other logged-in users can
+    // view this profile at /u/:username. Mutates only the caller's own row.
+    if (path === '/api/profile/visibility' && request.method === 'POST') {
+      if (!env.JWT_SECRET || !env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+      const session = await getSession(request, env.JWT_SECRET);
+      if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
+      if (session.role === 'guest') return jsonResponse({ error: 'Guests cannot have a public profile' }, 403);
+
+      let body;
+      try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
+      const { isPublic } = body ?? {};
+      if (typeof isPublic !== 'boolean') return jsonResponse({ error: 'isPublic (boolean) required' }, 400);
+
+      await env.DB.prepare('UPDATE users SET is_public = ? WHERE id = ?')
+        .bind(isPublic ? 1 : 0, session.sub).run();
+      return jsonResponse({ isPublic });
+    }
+
+    // GET /api/user/:username — the public subset of a profile, for other
+    // logged-in users viewing /u/:username. Whitelisted fields only, and only
+    // when the target has opted in via is_public. Never exposes quiz-room
+    // history or per-topic quiz progress — those stay private even when public.
+    const publicUserMatch = path.match(/^\/api\/user\/([a-zA-Z0-9_]{3,20})$/);
+    if (publicUserMatch && request.method === 'GET') {
+      if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+      const target = await env.DB.prepare(
+        'SELECT id, username, role, avatar, created_at, is_public FROM users WHERE username = ?'
+      ).bind(publicUserMatch[1]).first();
+      if (!target || target.role === 'guest') return jsonResponse({ error: 'User not found' }, 404);
+      if (!target.is_public) return jsonResponse({ error: 'This profile is private' }, 403);
+
+      const { results: prog } = await env.DB.prepare(
+        'SELECT topic_id FROM quiz_results WHERE user_id = ?'
+      ).bind(target.id).all();
+      const doneTopics = new Set((prog ?? []).map(r => String(r.topic_id)));
+
+      return jsonResponse({
+        username: target.username,
+        avatar: target.avatar ?? null,
+        created_at: target.created_at,
+        badges: pathwayBadges(doneTopics),
+        rank: await leaderboardRank(env, 'quiz_results', target.id, target.username),
+        roomRank: await leaderboardRank(env, 'quiz_room_attempts', target.id, target.username),
       });
     }
 
@@ -3122,6 +3169,9 @@ export default {
     const topicPageMatch = path.match(/^\/topic\/\w+$/);
     // quiz/:code — any path matching /quiz/XXXX-XXXX
     const quizRoomMatch = path.match(/^\/quiz\/[A-Z0-9]{4}-[A-Z0-9]{4}$/i);
+    // u/:username — public profile view; validity/privacy is resolved client-side
+    // via /api/user/:username, same pattern as quiz/:code.
+    const publicProfilePageMatch = path.match(/^\/u\/[a-zA-Z0-9_]+$/);
 
     let assetPath = null;
     if (viewRoutes[path] !== undefined) {
@@ -3130,6 +3180,8 @@ export default {
       assetPath = '/topic';
     } else if (quizRoomMatch) {
       assetPath = '/quiz-room';
+    } else if (publicProfilePageMatch) {
+      assetPath = '/u';
     } else if (path === '/sop') {
       assetPath = '/Cyber_Unit_SOP.pdf';
     } else if (path === '/danica') {

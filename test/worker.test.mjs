@@ -86,6 +86,32 @@ function mockAssets() {
   };
 }
 
+// A mock D1 for the public-profile endpoint: resolves `SELECT ... FROM users
+// WHERE username = ?` from a fixed users-by-username map, and treats any
+// leaderboardRank aggregate query as "no points" (so rank comes back null
+// without needing a second mocked query).
+function mockPublicProfileDB(usersByUsername) {
+  return {
+    prepare(sql) {
+      return {
+        bind: (...bindings) => ({
+          first: async () => {
+            if (/FROM users WHERE username = \?/.test(sql)) {
+              return usersByUsername[bindings[0]] ?? null;
+            }
+            if (/WHERE user_id = \?/.test(sql)) {
+              return { points: 0, count: 0 };
+            }
+            return null;
+          },
+          all:   async () => ({ results: [] }),
+          run:   async () => ({ meta: { last_row_id: 1 } }),
+        }),
+      };
+    },
+  };
+}
+
 async function sessionCookieFor(user) {
   const token = await signJWT(
     { sub: user.sub, username: user.username, role: user.role, exp: Math.floor(Date.now() / 1000) + 3600 },
@@ -809,6 +835,123 @@ describe('GET /api/leaderboard modes', () => {
   });
 });
 
+// ─── POST /api/profile/visibility ───────────────────────────────────────────────
+
+describe('POST /api/profile/visibility', () => {
+  const post = (body, env) => worker.fetch(
+    new Request('https://example.com/api/profile/visibility', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    env,
+  );
+
+  test('should require a session', async () => {
+    const res = await post({ isPublic: true }, { JWT_SECRET: SECRET, DB: mockDB() });
+    assert.equal(res.status, 401);
+  });
+
+  test('should reject guests', async () => {
+    const cookie = await sessionCookieFor({ sub: 9, username: 'guest-abc', role: 'guest' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/profile/visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ isPublic: true }),
+      }),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 403);
+  });
+
+  test('should reject a non-boolean body', async () => {
+    const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/profile/visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ isPublic: 'yes' }),
+      }),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 400);
+  });
+
+  test('should update only the caller\'s own row', async () => {
+    // IDOR guard: the UPDATE must be scoped to session.sub, never a target id
+    // taken from the request body.
+    const db = mockDB();
+    const cookie = await sessionCookieFor({ sub: 42, username: 'alice', role: 'member' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/profile/visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ isPublic: true }),
+      }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.isPublic, true);
+    const update = db.calls.find(c => c.op === 'run');
+    assert.match(update.sql, /UPDATE users SET is_public = \? WHERE id = \?/);
+    assert.deepEqual(update.bindings, [1, 42]);
+  });
+});
+
+// ─── GET /api/user/:username (public profile) ───────────────────────────────────
+
+describe('GET /api/user/:username', () => {
+  test('should 404 for an unknown username', async () => {
+    const res = await worker.fetch(
+      new Request('https://example.com/api/user/nobody'),
+      { DB: mockPublicProfileDB({}) },
+    );
+    assert.equal(res.status, 404);
+  });
+
+  test('should 404 for a guest account (not viewable even if flagged public)', async () => {
+    const db = mockPublicProfileDB({
+      'guest-abc': { id: 9, username: 'guest-abc', role: 'guest', avatar: null, created_at: 1000, is_public: 1 },
+    });
+    const res = await worker.fetch(new Request('https://example.com/api/user/guest-abc'), { DB: db });
+    assert.equal(res.status, 404);
+  });
+
+  test('should 403 for a private profile without leaking any fields', async () => {
+    const db = mockPublicProfileDB({
+      bob: { id: 2, username: 'bob', role: 'member', avatar: null, created_at: 1000, is_public: 0 },
+    });
+    const res = await worker.fetch(new Request('https://example.com/api/user/bob'), { DB: db });
+    assert.equal(res.status, 403);
+    const data = await res.json();
+    assert.ok(!('badges' in data));
+    assert.ok(!('rank' in data));
+    assert.ok(!('avatar' in data));
+  });
+
+  test('should return only the whitelisted public fields for a public profile', async () => {
+    const db = mockPublicProfileDB({
+      alice: { id: 1, username: 'alice', role: 'member', avatar: 'data:image/png;base64,x', created_at: 1000, is_public: 1 },
+    });
+    const res = await worker.fetch(new Request('https://example.com/api/user/alice'), { DB: db });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.username, 'alice');
+    assert.equal(data.avatar, 'data:image/png;base64,x');
+    assert.equal(data.created_at, 1000);
+    assert.ok(Array.isArray(data.badges));
+    assert.equal(data.rank, null); // mock DB reports zero points
+    assert.equal(data.roomRank, null);
+    // No private fields ever leak through the public endpoint.
+    assert.ok(!('id' in data));
+    assert.ok(!('role' in data));
+    assert.ok(!('is_public' in data));
+    assert.ok(!('roomAttempts' in data));
+  });
+});
+
 // ─── Page rendering (served through env.ASSETS, backed by real public/*.html) ──
 // These exercise the actual SSR injection paths in worker.js — the class of bug
 // that shipped silently before (an unknown /topic/:id serving a 200 "soft 404",
@@ -883,6 +1026,16 @@ describe('GET /quiz/:code (quiz room shell)', () => {
     const res = await worker.fetch(new Request('https://example.com/quiz/ABCD-2345'), { ASSETS: mockAssets() });
     assert.equal(res.status, 200);
     assert.match(res.headers.get('Content-Type'), /text\/html/);
+  });
+});
+
+describe('GET /u/:username (public profile shell)', () => {
+  test('should render the noindex profile shell for a well-formed username', async () => {
+    const res = await worker.fetch(new Request('https://example.com/u/alice'), { ASSETS: mockAssets() });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('Content-Type'), /text\/html/);
+    const body = await res.text();
+    assert.match(body, /<meta name="robots" content="noindex">/);
   });
 });
 

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>CyberUnit @ UNG — Profile</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="/resources">Resources</a></li>
+        <li><a href="/about">About</a></li>
+        <li id="authNavItem"></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+    <div class="container" style="max-width: 960px; padding: 2rem 1rem;">
+
+      <header style="margin-bottom: 2rem; text-align: center;">
+        <h1 id="profileName" class="profile-name">Profile</h1>
+      </header>
+
+      <!-- Shown when the profile is unknown, private, or fails to load -->
+      <div id="publicProfileState" class="login-gate" hidden>
+        <p style="font-size:2rem;margin-bottom:0.75rem;" id="publicProfileIcon">🔒</p>
+        <p id="publicProfileMessage">This profile is private.</p>
+      </div>
+
+      <!-- Shown when the profile is public -->
+      <div id="publicProfileContent" hidden>
+
+        <section class="instructor-section">
+          <h2 class="instructor-section-heading">// Account</h2>
+          <div id="accountWrap">
+            <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace;">Loading...</p>
+          </div>
+        </section>
+
+        <section class="instructor-section">
+          <h2 class="instructor-section-heading">// Pathway Badges</h2>
+          <div id="badgesWrap">
+            <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace;">Loading...</p>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

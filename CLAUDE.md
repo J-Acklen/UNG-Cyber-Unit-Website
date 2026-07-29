@@ -43,7 +43,20 @@ from that array automatically. Two things that do NOT auto-update:
 (`homeTopicCards()` on `path === '/'`, `pathwayHtml()` on `path === '/start'`) so crawlers
 see the content without JS. `main.js`/`start.js` then enhance with per-user progress and
 leave the server-rendered cards intact if that fetch fails. Both share the `topicCard()`
-"module" component.
+"module" component. **`/topic/:id` lesson content is also server-rendered** (`renderContent()`
++ helpers + `getTopicSVG()` in `worker.js`) — these are hand-kept copies of the equivalent
+functions in `public/js/main.js`; update both if a topic-rendering helper changes, or topic
+pages regress to depending on client JS for content (which previously caused a real Search
+Console Soft 404).
+
+**Public/private profiles:** `users.is_public` (default `0`, opt-in) gates `/u/:username`.
+`GET /api/user/:username` is the only place that subset is ever returned — it must stay a
+strict field whitelist (username, avatar, member-since, pathway badges, module/room rank)
+and must **never** include quiz-room history, per-topic quiz progress, role, id, or any
+other field from `/api/profile`. Unknown username or a guest account → `404`; a real but
+private account → `403` (no data). The leaderboard links every username to `/u/:username`
+regardless of visibility — the private/404 state is resolved when that page is opened, not
+by hiding the link.
 
 ## Verify before committing
 Run `npx wrangler dev` and actually exercise the change (repo pattern: drive it in

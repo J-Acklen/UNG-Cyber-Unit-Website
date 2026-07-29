@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   avatar        TEXT,
   streak        INTEGER NOT NULL DEFAULT 0,
   last_active   TEXT,
-  created_at    INTEGER NOT NULL
+  created_at    INTEGER NOT NULL,
+  is_public     INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS quiz_results (

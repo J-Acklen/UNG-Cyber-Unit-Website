@@ -3,23 +3,22 @@
 **Goal:** a toggle on `/profile` that controls whether other logged-in users can
 view this user's profile by clicking their username on the `/leaderboard` page.
 
-**Status:** planning only — nothing implemented yet. Resolve **Chunk 0** decisions
-before writing code.
+**Status:** implemented and shipped.
 
 ---
 
-## Chunk 0 — DECISIONS FIRST (resolve these before building)
+## Chunk 0 — DECISIONS (as resolved)
 
-- [ ] **Default visibility** for existing + new users — sets the migration `DEFAULT`.
-      _Recommendation: private (opt-in), i.e. `DEFAULT 0`._
-- [ ] **What a public profile shows.** Proposed: username, avatar, member-since,
-      module/room ranks, earned badges, topic-quiz progress. Proposed to EXCLUDE:
-      quiz-room history (feels private). _Confirm the exact field list._
-- [ ] **URL scheme** for viewing others. _Recommendation: `/u/:username` (short, dynamic)._
-- [ ] **Leaderboard link behavior.** _Recommendation: only link **public** usernames
-      (needs `is_public` in the leaderboard payload); private ones stay plain text._
-      Alternative: link all, show a "private" state when opened.
-- [ ] **Toggle UI.** _Recommendation: a switch/pill in the `// Account` section._
+- [x] **Default visibility:** private (opt-in), `DEFAULT 0`.
+- [x] **What a public profile shows:** username, avatar, member-since, pathway badges,
+      module rank, room rank. **Excluded:** per-topic quiz progress and quiz-room
+      history — both stay private even when the profile is public.
+- [x] **URL scheme:** `/u/:username`.
+- [x] **Leaderboard link behavior:** every username links to `/u/:username`, regardless
+      of visibility (deviates from the original "only link public" recommendation) —
+      visiting a private user's page shows a generic "this profile is private" state.
+- [x] **Toggle UI:** a switch in the `// Account` section on `/profile`, generated
+      client-side in `main.js` (not baked into `profile.html`).
 
 ---
 
@@ -78,60 +77,71 @@ These bit us this session — keep them in mind for this feature:
 ## Implementation checklist
 
 ### 1. Data model + migration
-- [ ] `schema.sql`: `is_public INTEGER NOT NULL DEFAULT <0|1>` on `users`.
-- [ ] Migrate local, then **remote before deploy**.
+- [x] `schema.sql`: `is_public INTEGER NOT NULL DEFAULT 0` on `users`.
+- [x] Migrate local. **Remote migration still pending — must happen before the deploy
+      that ships this branch.**
 
 ### 2. Server (`worker.js`)
-- [ ] `/api/profile`: include the owner's `is_public`.
-- [ ] `POST /api/profile/visibility` (or `PATCH /api/profile`): auth required; boolean
-      body; updates **only `session.sub`**; returns new value. Guests rejected/no-op.
-- [ ] `GET /api/user/:username`: returns the **public subset only** when `is_public=1`;
-      else `403` (generic "private"); `404` unknown/guest. Reuse `pathwayBadges` +
-      `leaderboardRank`. Never return private fields.
-- [ ] `/api/leaderboard`: add `u.is_public` to the query + each `top` row.
+- [x] `/api/profile`: include the owner's `isPublic`.
+- [x] `POST /api/profile/visibility`: auth required; boolean `isPublic` body; updates
+      **only `session.sub`**; returns new value. Guests rejected (403).
+- [x] `GET /api/user/:username`: returns the **public subset only** when `is_public=1`;
+      else `403` (generic "private"); `404` unknown/guest. Reuses `pathwayBadges` +
+      `leaderboardRank`. Never returns private fields.
+- [ ] ~~`/api/leaderboard`: add `u.is_public` to the query + each `top` row.~~ Not
+      needed — see the leaderboard link-behavior decision below.
 
 ### 3. Client — profile page (toggle)
-- [ ] Add the toggle to `profile.html` (Account/header) with a clear label.
-- [ ] Wire in `main.js`: init from `profile.is_public`, `POST` on change, reflect
-      success/failure. No inline script.
+- [x] Toggle lives in the `// Account` section, generated in `main.js` (not baked into
+      `profile.html`'s static markup).
+- [x] Wired in `main.js`: init from `profile.isPublic`, `POST` on change, reflect
+      success/failure, revert the switch on error. No inline script.
 
 ### 4. Client — leaderboard (clickable usernames)
-- [ ] In `renderLeaderboard`, link the username to `/u/:username` only when
-      `row.is_public` (and not guest); else plain text. Keep avatar + "you" layout.
-- [ ] Small CSS for the linked username.
+- [x] In `renderLeaderboard`, every username links to `/u/:username` (not gated on
+      `is_public` — see decision above). Avatar + "you" layout unchanged.
+- [x] CSS for the linked username (`.lb-user-cell` hover state).
 
 ### 5. Public profile view (new page)
-- [ ] `public/u.html` shell: navbar, container, `noindex`, loads `/js/main.js`.
-- [ ] Worker route: match `/u/:username` (dynamic → hits worker like `/quiz/:code`),
-      serve the shell. No `run_worker_first` entry (dynamic path).
-- [ ] `main.js` dispatch branch `/u/...` → `initPublicProfile()`: parse username,
-      fetch `/api/user/:username`, render public subset (reuse green name header,
-      avatar, rank tiles, badges, progress). Handle 3 states: rendered / private / 404.
-- [ ] Do NOT show owner-only controls (avatar upload, visibility toggle) on others'.
+- [x] `public/u.html` shell: navbar, container, `noindex`, loads `/js/main.js`.
+- [x] Worker route: matches `/u/:username` (dynamic → hits worker like `/quiz/:code`),
+      serves the shell. No `run_worker_first` entry (dynamic path).
+- [x] `main.js` dispatch branch `/u/...` → `initPublicProfilePage()`: parses username,
+      fetches `/api/user/:username`, renders the public subset (reuses the green name
+      header, avatar, rank tiles via the extracted `rankTile()`, and `renderProfileBadges()`).
+      Handles 3 states: rendered / private / 404 (+ a generic error state).
+- [x] Owner-only controls (avatar upload, visibility toggle) never render on `/u/...`
+      — that markup only exists in `loadProfileAccount()` for the owner's own `/profile`.
 
 ### 6. Security / privacy review (this project cares)
-- [ ] Toggle mutates only the caller's row (`WHERE id = session.sub`), no target id.
-- [ ] `/api/user/:username`: only whitelisted public fields, only when `is_public=1`;
-      private → 403 (no data), unknown/guest → 404. No IDOR, no leakage.
-- [ ] `escHtml` others' usernames; avatars stay under CSP `img-src 'self' data:`.
+- [x] Toggle mutates only the caller's row (`WHERE id = session.sub`), no target id.
+- [x] `/api/user/:username`: only whitelisted public fields, only when `is_public=1`;
+      private → 403 (no data), unknown/guest → 404. No IDOR, no leakage — covered by
+      tests that assert the private/public response bodies never contain `id`, `role`,
+      `is_public`, or `roomAttempts`.
+- [x] `escHtml`/`encodeURIComponent` used for others' usernames; avatars stay under CSP
+      `img-src 'self' data:`.
 
 ### 7. Tests (`test/worker.test.mjs` — gates deploy)
-- [ ] `POST /api/profile/visibility`: requires session.
-- [ ] `GET /api/user/:username`: 403 private, 404 unknown, public shape when public
-      (mock returns `is_public=1`), no private fields.
-- [ ] `/api/leaderboard`: rows include `is_public`.
-- [ ] Export + unit-test any new pure helper (e.g. a public-profile projection).
+- [x] `POST /api/profile/visibility`: requires session, rejects guests, rejects a
+      non-boolean body, and updates only the caller's row (asserted via the mock DB's
+      recorded bindings).
+- [x] `GET /api/user/:username`: 403 private (no leaked fields), 404 unknown, 404 guest,
+      public shape when public, no private fields ever present.
+- [ ] ~~`/api/leaderboard`: rows include `is_public`.~~ Not applicable — see above.
+- [x] Page-render test: `/u/:username` shell renders 200 + `noindex`.
 
 ### 8. Docs
-- [ ] `README.md`: add `/u/:username`, `/api/user/:username`,
-      `/api/profile/visibility`; note `users.is_public` in the schema line.
-- [ ] `CLAUDE.md`: note the public/private convention + that `/api/user/:username`
+- [x] `README.md`: added `/u/:username`, `/api/user/:username`,
+      `/api/profile/visibility`; noted `users.is_public` in the schema line.
+- [x] `CLAUDE.md`: noted the public/private convention + that `/api/user/:username`
       must never return private fields.
 
 ### 9. Deploy
 - [ ] Remote migration first → commit + push (auto-deploys) → verify: toggle
       persists, public user viewable at `/u/:name`, private user shows private state,
-      leaderboard links only public users. Purge cache if a page looks stale.
+      leaderboard links work for both public and private users. Purge cache if a page
+      looks stale.
 
 ---
 

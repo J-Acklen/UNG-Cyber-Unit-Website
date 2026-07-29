@@ -2309,6 +2309,58 @@ async function initProfilePage() {
   ]);
 }
 
+async function initPublicProfilePage() {
+  const username = window.location.pathname.replace(/^\/u\//, '');
+  const stateEl   = document.getElementById('publicProfileState');
+  const iconEl    = document.getElementById('publicProfileIcon');
+  const msgEl     = document.getElementById('publicProfileMessage');
+  const contentEl = document.getElementById('publicProfileContent');
+
+  const showState = (icon, message) => {
+    if (iconEl) iconEl.textContent = icon;
+    if (msgEl) msgEl.textContent = message;
+    if (stateEl) stateEl.hidden = false;
+  };
+
+  try {
+    const res = await fetch(`/api/user/${encodeURIComponent(username)}`);
+    if (res.status === 404) { showState('❓', 'User not found.'); return; }
+    if (res.status === 403) { showState('🔒', 'This profile is private.'); return; }
+    if (!res.ok) throw new Error();
+
+    const profile = await res.json();
+    document.title = `${profile.username} — CyberUnit @ UNG`;
+    const nameHeader = document.getElementById('profileName');
+    if (nameHeader) nameHeader.textContent = profile.username;
+
+    const joined = profile.created_at
+      ? new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+      : '—';
+
+    const accountWrap = document.getElementById('accountWrap');
+    if (accountWrap) {
+      accountWrap.innerHTML = `
+        <div class="profile-account">
+          <div class="profile-avatar-col">
+            <img class="profile-avatar" src="${escHtml(profile.avatar || DEFAULT_AVATAR)}" alt="Profile picture">
+          </div>
+          <div class="results-summary-grid">
+            <div class="results-stat">
+              <span class="results-stat-val" style="font-size:1.1rem;">${escHtml(joined)}</span>
+              <span class="results-stat-label">Member Since</span>
+            </div>
+            ${rankTile(profile.rank, 'Module Rank', '/leaderboard')}
+            ${rankTile(profile.roomRank, 'Room Rank', '/leaderboard?mode=rooms')}
+          </div>
+        </div>`;
+    }
+    renderProfileBadges(profile.badges ?? []);
+    if (contentEl) contentEl.hidden = false;
+  } catch {
+    showState('⚠️', 'Failed to load this profile.');
+  }
+}
+
 async function initLeaderboardPage() {
   const gate = document.getElementById('loginGate');
   const content = document.getElementById('leaderboardContent');
@@ -2383,10 +2435,10 @@ function renderLeaderboard(top, me, mode = 'modules') {
       <tr class="${isMe ? 'lb-me' : ''}">
         <td class="lb-rank">${medal(row.rank)}</td>
         <td class="lb-user">
-          <span class="lb-user-cell">
+          <a class="lb-user-cell" href="/u/${encodeURIComponent(row.username)}">
             <img class="lb-avatar" src="${escHtml(row.avatar || DEFAULT_AVATAR)}" alt="">
             <span>${escHtml(row.username)}</span>${isMe ? ' <span class="lb-you">you</span>' : ''}
-          </span>
+          </a>
         </td>
         <td class="lb-pts">${row.points}</td>
         <td class="lb-sub">${row.count}</td>
@@ -2411,6 +2463,17 @@ function renderLeaderboard(top, me, mode = 'modules') {
     ${footer}`;
 }
 
+// Shared rank tile used on both the owner's profile and public profile views.
+function rankTile(rank, label, href) {
+  const tier = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+  const disp = rank ? `${rank === 1 ? '👑 ' : ''}#${rank}` : 'Unranked';
+  return `
+          <a href="${href}" class="results-stat results-stat--link ${tier ? 'pf-rank pf-rank--' + tier : ''}" aria-label="${label} — open the leaderboard">
+            <span class="results-stat-val">${disp}</span>
+            <span class="results-stat-label">${label} ↗</span>
+          </a>`;
+}
+
 async function loadProfileAccount() {
   const accountWrap = document.getElementById('accountWrap');
   const historyWrap = document.getElementById('roomHistoryWrap');
@@ -2426,15 +2489,6 @@ async function loadProfileAccount() {
     const displayName = profile.role === 'guest' ? 'Guest' : profile.username;
     const nameHeader = document.getElementById('profileName');
     if (nameHeader) nameHeader.textContent = displayName;
-    const rankTile = (rank, label, href) => {
-      const tier = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
-      const disp = rank ? `${rank === 1 ? '👑 ' : ''}#${rank}` : 'Unranked';
-      return `
-          <a href="${href}" class="results-stat results-stat--link ${tier ? 'pf-rank pf-rank--' + tier : ''}" aria-label="${label} — open the leaderboard">
-            <span class="results-stat-val">${disp}</span>
-            <span class="results-stat-label">${label} ↗</span>
-          </a>`;
-    };
 
     accountWrap.innerHTML = `
       <div class="profile-account">
@@ -2459,9 +2513,23 @@ async function loadProfileAccount() {
           ${rankTile(profile.rank, 'Module Rank', '/leaderboard')}
           ${rankTile(profile.roomRank, 'Room Rank', '/leaderboard?mode=rooms')}
         </div>
+        ${profile.role !== 'guest' ? `
+        <div class="profile-visibility">
+          <label class="visibility-toggle">
+            <input type="checkbox" id="visibilityToggle" ${profile.isPublic ? 'checked' : ''} aria-describedby="visibilityStatusText">
+            <span class="visibility-toggle-slider" aria-hidden="true"></span>
+          </label>
+          <span class="visibility-toggle-copy">
+            <strong>Public profile</strong>
+            <span id="visibilityStatusText">${profile.isPublic
+              ? `Other members can view your profile at <code>/u/${escHtml(profile.username)}</code>`
+              : 'Only you can see your profile'}</span>
+          </span>
+        </div>` : ''}
       </div>`;
 
     wireAvatarControls();
+    wireVisibilityToggle(profile.username);
     renderProfileRoomHistory(profile.roomAttempts ?? []);
     renderProfileBadges(profile.badges ?? []);
   } catch {
@@ -2491,6 +2559,36 @@ function renderProfileBadges(badges) {
         </a>`;
       }).join('')}
     </div>`;
+}
+
+function wireVisibilityToggle(username) {
+  const toggle = document.getElementById('visibilityToggle');
+  const statusText = document.getElementById('visibilityStatusText');
+  if (!toggle) return;
+
+  toggle.addEventListener('change', async () => {
+    const isPublic = toggle.checked;
+    toggle.disabled = true;
+    try {
+      const res = await fetch('/api/profile/visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (statusText) {
+        statusText.innerHTML = data.isPublic
+          ? `Other members can view your profile at <code>/u/${escHtml(username)}</code>`
+          : 'Only you can see your profile';
+      }
+    } catch {
+      toggle.checked = !isPublic; // revert on failure
+      if (statusText) statusText.textContent = 'Could not update — please try again.';
+    } finally {
+      toggle.disabled = false;
+    }
+  });
 }
 
 function wireAvatarControls() {
@@ -3008,6 +3106,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initProfilePage();
   } else if (window.location.pathname === '/leaderboard') {
     initLeaderboardPage();
+  } else if (window.location.pathname.startsWith('/u/')) {
+    initPublicProfilePage();
   } else if (window.location.pathname.startsWith('/quiz/')) {
     initQuizRoom();
   } else if (window.location.pathname === '/instructor') {
