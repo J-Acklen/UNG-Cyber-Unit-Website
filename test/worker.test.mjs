@@ -5,6 +5,9 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import worker, {
   base64ImageMatchesType,
@@ -59,6 +62,26 @@ function mockDB() {
     calls,
     prepare(sql) {
       return { bind: (...bindings) => exec(sql, bindings), ...exec(sql, null) };
+    },
+  };
+}
+
+// A mock ASSETS binding backed by the real files in public/, so page-rendering
+// tests exercise the worker's actual SSR injection (topic content, home grid,
+// pathway, etc.) against the real static shells instead of fabricated HTML.
+const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
+
+function mockAssets() {
+  return {
+    async fetch(input) {
+      const url = new URL(typeof input === 'string' ? input : input.url);
+      let p = url.pathname;
+      if (p === '/') p = '/index.html';
+      else if (!p.includes('.')) p = `${p}.html`;
+      const filePath = join(PUBLIC_DIR, p);
+      if (!existsSync(filePath)) return new Response('Not found', { status: 404 });
+      const contentType = p.endsWith('.pdf') ? 'application/pdf' : 'text/html; charset=utf-8';
+      return new Response(readFileSync(filePath), { status: 200, headers: { 'Content-Type': contentType } });
     },
   };
 }
@@ -783,5 +806,97 @@ describe('GET /api/leaderboard modes', () => {
     // modes are ever used.
     const data = await (await call('?mode=bogus')).json();
     assert.equal(data.mode, 'modules');
+  });
+});
+
+// ─── Page rendering (served through env.ASSETS, backed by real public/*.html) ──
+// These exercise the actual SSR injection paths in worker.js — the class of bug
+// that shipped silently before (an unknown /topic/:id serving a 200 "soft 404",
+// and topic pages shipping only a client-rendered "Loading topic..." shell).
+
+describe('Static/simple pages', () => {
+  const pages = ['/', '/start', '/about', '/resources', '/profile', '/admin', '/instructor', '/quiz', '/leaderboard'];
+
+  for (const path of pages) {
+    test(`GET ${path} should render 200 HTML with no leftover template placeholders`, async () => {
+      const res = await worker.fetch(new Request(`https://example.com${path}`), { ASSETS: mockAssets() });
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get('Content-Type'), /text\/html/);
+      const body = await res.text();
+      assert.ok(body.length > 0);
+      assert.doesNotMatch(body, /\{\{.*\}\}/); // no unreplaced template tokens
+    });
+  }
+
+  test('GET / should server-render every topic card (not depend on client JS)', async () => {
+    const res = await worker.fetch(new Request('https://example.com/'), { ASSETS: mockAssets() });
+    const body = await res.text();
+    for (const t of topics) {
+      assert.ok(body.includes(`/topic/${t.id}`), `homepage links to topic ${t.id}`);
+    }
+  });
+
+  test('GET /start should server-render every pathway stage topic', async () => {
+    const res = await worker.fetch(new Request('https://example.com/start'), { ASSETS: mockAssets() });
+    const body = await res.text();
+    for (const stage of pathwayStages) {
+      for (const id of stage.topicIds) {
+        assert.ok(body.includes(`/topic/${id}`), `pathway links to topic ${id}`);
+      }
+    }
+  });
+});
+
+describe('GET /topic/:id', () => {
+  for (const t of topics) {
+    test(`topic ${t.id} (${t.title}) should render its real lesson content, not the loading placeholder`, async () => {
+      const res = await worker.fetch(new Request(`https://example.com/topic/${t.id}`), { ASSETS: mockAssets() });
+      assert.equal(res.status, 200);
+      const body = await res.text();
+
+      // The bug this guards against: every topic page serving identical thin
+      // content because the real body only ever got filled in client-side.
+      assert.doesNotMatch(body, /Loading topic\.\.\./);
+      assert.doesNotMatch(body, />Loading\.\.\.</);
+
+      // Real, topic-specific content made it into the initial HTML.
+      assert.ok(body.includes(escapeHtml(t.title)), 'title rendered');
+      for (const section of t.fullContent.sections) {
+        assert.ok(body.includes(section.heading), `section heading "${section.heading}" rendered`);
+      }
+
+      // SEO tags from topicMetaTags().
+      assert.ok(body.includes(`https://ungcyberunit.org/topic/${t.id}`), 'canonical URL present');
+    });
+  }
+
+  test('should 404 for an unknown topic id (not a soft 404)', async () => {
+    const res = await worker.fetch(new Request('https://example.com/topic/zz'), { ASSETS: mockAssets() });
+    assert.equal(res.status, 404);
+    const body = await res.text();
+    assert.match(body, /404/);
+  });
+});
+
+describe('GET /quiz/:code (quiz room shell)', () => {
+  test('should render the quiz room shell for a well-formed room code', async () => {
+    const res = await worker.fetch(new Request('https://example.com/quiz/ABCD-2345'), { ASSETS: mockAssets() });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('Content-Type'), /text\/html/);
+  });
+});
+
+describe('GET /sop (SOP PDF via the canonical route)', () => {
+  test('should serve the PDF with the right content type', async () => {
+    const res = await worker.fetch(new Request('https://example.com/sop'), { ASSETS: mockAssets() });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('Content-Type'), /application\/pdf/);
+  });
+});
+
+describe('Unknown routes', () => {
+  test('should 404 for a nonsense path', async () => {
+    const res = await worker.fetch(new Request('https://example.com/this-page-does-not-exist'), { ASSETS: mockAssets() });
+    assert.equal(res.status, 404);
   });
 });
