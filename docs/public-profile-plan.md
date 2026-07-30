@@ -138,10 +138,16 @@ These bit us this session — keep them in mind for this feature:
       must never return private fields.
 
 ### 9. Deploy
-- [ ] Remote migration first → commit + push (auto-deploys) → verify: toggle
+- [x] Remote migration first → commit + push (auto-deploys) → verify: toggle
       persists, public user viewable at `/u/:name`, private user shows private state,
       leaderboard links work for both public and private users. Purge cache if a page
       looks stale.
+      Verified 2026-07-30: remote D1 `users.is_public` confirmed present; `npm test`
+      124/124 passing; `/api/profile`, `/api/profile/visibility`, `/api/user/:username`
+      all match the field-whitelist/status-code spec above. Production zone cache was
+      found stale (`/u/:username` and `/api/user/:username` were 404ing behind
+      `cf-cache-status: HIT` despite `no-store`) — resolved with a dashboard
+      Caching → Purge Everything; both routes now serve correctly live.
 
 ---
 
