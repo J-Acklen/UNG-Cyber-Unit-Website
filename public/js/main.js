@@ -653,6 +653,7 @@ function updateAuthNav() {
     `<a href="/start" class="nav-dropdown-item">Beginner Pathway</a>`,
     `<a href="/quiz" class="nav-dropdown-item">Join Room</a>`,
     `<a href="/leaderboard" class="nav-dropdown-item">Leaderboard</a>`,
+    `<a href="/announcements" class="nav-dropdown-item">Announcements</a>`,
     `<a href="/profile" class="nav-dropdown-item">Profile</a>`,
     isInstructor() ? `<a href="/instructor" class="nav-dropdown-item">Instructor Panel</a>` : '',
     currentUser?.role === 'admin' ? `<a href="/admin" class="nav-dropdown-item nav-dropdown-item--danger">Admin Panel</a>` : '',
@@ -1780,6 +1781,205 @@ async function initLeaderboardPage() {
   await loadLeaderboard(initialMode);
 }
 
+// ─── Announcements ──────────────────────────────────────────────────────────
+
+async function initAnnouncementsPage() {
+  const gate = document.getElementById('loginGate');
+  const gateMsg = document.getElementById('loginGateMsg');
+  const content = document.getElementById('announcementsContent');
+
+  // Signed-out and guest accounts both see the gate — guests are logged in
+  // but explicitly excluded from this member-only content, unlike most of
+  // the site where a guest session is treated the same as a real member.
+  if (!currentUser || currentUser.role === 'guest') {
+    if (gateMsg) {
+      gateMsg.textContent = currentUser?.role === 'guest'
+        ? "Guest accounts can't view announcements — sign in with a member account."
+        : 'Sign in to view announcements.';
+    }
+    if (gate) gate.hidden = false;
+    document.getElementById('loginGateBtn')?.addEventListener('click', () => openAuthModal('login'));
+    return;
+  }
+  if (content) content.hidden = false;
+
+  let allAnnouncements = [];
+  const SORT_CYCLE = { newest: 'oldest', oldest: 'az', az: 'za', za: 'newest' };
+  const SORT_LABELS = { newest: 'Sort: Newest First', oldest: 'Sort: Oldest First', az: 'Sort: A–Z', za: 'Sort: Z–A' };
+  let sortMode = 'newest';
+  let openForm = () => {}; // reassigned below when the caller is an admin
+
+  const formatDate = (ms) => new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
+  function getSorted(list) {
+    const sorted = [...list];
+    if (sortMode === 'newest') sorted.sort((a, b) => b.created_at - a.created_at);
+    else if (sortMode === 'oldest') sorted.sort((a, b) => a.created_at - b.created_at);
+    else if (sortMode === 'az') sorted.sort((a, b) => a.title.localeCompare(b.title));
+    else if (sortMode === 'za') sorted.sort((a, b) => b.title.localeCompare(a.title));
+    return sorted;
+  }
+
+  function getFiltered(list, query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(a => a.title.toLowerCase().includes(q) || formatDate(a.created_at).toLowerCase().includes(q));
+  }
+
+  function render() {
+    const wrap = document.getElementById('announcementsList');
+    if (!wrap) return;
+    const query = document.getElementById('announcementSearch')?.value ?? '';
+    const list = getSorted(getFiltered(allAnnouncements, query));
+    const isAdmin = currentUser?.role === 'admin';
+
+    if (!allAnnouncements.length) {
+      wrap.innerHTML = `<p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;">No announcements yet.</p>`;
+      return;
+    }
+    if (!list.length) {
+      wrap.innerHTML = `<p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;">No announcements match your search.</p>`;
+      return;
+    }
+
+    wrap.innerHTML = list.map(a => `
+      <div class="card announcement-card">
+        <h3 class="card-title">${escHtml(a.title)}</h3>
+        <p class="card-desc">${escHtml(a.body)}</p>
+        <div class="card-footer announcement-footer">
+          <span class="announcement-meta">Posted by ${escHtml(a.username)} — ${formatDate(a.created_at)}${a.updated_at ? ` (edited ${formatDate(a.updated_at)})` : ''}</span>
+          ${isAdmin ? `
+            <div class="announcement-actions">
+              <button type="button" class="btn btn-sm edit-announcement-btn" data-id="${a.id}">Edit</button>
+              <button type="button" class="btn btn-sm btn-danger delete-announcement-btn" data-id="${a.id}">Delete</button>
+            </div>` : ''}
+        </div>
+      </div>`).join('');
+
+    if (isAdmin) {
+      wrap.querySelectorAll('.edit-announcement-btn').forEach(btn => {
+        btn.addEventListener('click', () => openForm(allAnnouncements.find(a => a.id === parseInt(btn.dataset.id, 10))));
+      });
+      wrap.querySelectorAll('.delete-announcement-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.id, 10);
+          const a = allAnnouncements.find(x => x.id === id);
+          confirmDialog(`Delete "${a?.title ?? 'this announcement'}"? This cannot be undone.`, async () => {
+            const res = await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              allAnnouncements = allAnnouncements.filter(x => x.id !== id);
+              render();
+            } else {
+              alert('Failed to delete announcement.');
+            }
+          }, 'Delete');
+        });
+      });
+    }
+  }
+
+  async function loadAnnouncements() {
+    const wrap = document.getElementById('announcementsList');
+    try {
+      const res = await fetch('/api/announcements');
+      if (!res.ok) throw new Error();
+      const { results } = await res.json();
+      allAnnouncements = results ?? [];
+      render();
+    } catch {
+      if (wrap) wrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load announcements.</p>`;
+    }
+  }
+
+  // Sort button cycles through the 4 modes.
+  const sortBtn = document.getElementById('announcementSortBtn');
+  if (sortBtn) {
+    sortBtn.addEventListener('click', () => {
+      sortMode = SORT_CYCLE[sortMode];
+      sortBtn.textContent = SORT_LABELS[sortMode];
+      render();
+    });
+  }
+
+  // Search filters by title or formatted date as you type.
+  document.getElementById('announcementSearch')?.addEventListener('input', render);
+
+  // Admin-only: inline create/edit form.
+  if (currentUser?.role === 'admin') {
+    const formWrap = document.getElementById('announcementFormWrap');
+    if (formWrap) {
+      formWrap.hidden = false;
+      formWrap.innerHTML = `
+        <form id="announcementForm" class="announcement-form">
+          <h2 class="instructor-section-heading" id="announcementFormHeading">// New Announcement</h2>
+          <p class="form-error" id="announcementFormError" hidden></p>
+          <div class="form-group">
+            <label for="announcementTitle">Title</label>
+            <input type="text" id="announcementTitle" maxlength="200" required>
+          </div>
+          <div class="form-group">
+            <label for="announcementBody">Body</label>
+            <textarea id="announcementBody" rows="4" maxlength="5000" required></textarea>
+          </div>
+          <div class="announcement-form-actions">
+            <button type="submit" class="btn btn-primary" id="announcementFormSubmit">Post Announcement</button>
+            <button type="button" class="btn btn-sm" id="announcementFormCancel" hidden>Cancel</button>
+          </div>
+        </form>`;
+
+      let editingId = null;
+
+      openForm = (a) => {
+        editingId = a.id;
+        document.getElementById('announcementFormHeading').textContent = '// Edit Announcement';
+        document.getElementById('announcementTitle').value = a.title;
+        document.getElementById('announcementBody').value = a.body;
+        document.getElementById('announcementFormSubmit').textContent = 'Save Changes';
+        document.getElementById('announcementFormCancel').hidden = false;
+        formWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+
+      function resetForm() {
+        editingId = null;
+        document.getElementById('announcementForm').reset();
+        document.getElementById('announcementFormHeading').textContent = '// New Announcement';
+        document.getElementById('announcementFormSubmit').textContent = 'Post Announcement';
+        document.getElementById('announcementFormCancel').hidden = true;
+      }
+
+      document.getElementById('announcementFormCancel').addEventListener('click', resetForm);
+
+      document.getElementById('announcementForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById('announcementFormError');
+        errEl.hidden = true;
+
+        const title = document.getElementById('announcementTitle').value.trim();
+        const body = document.getElementById('announcementBody').value.trim();
+        if (!title || !body) { errEl.textContent = 'Title and body are both required.'; errEl.hidden = false; return; }
+
+        const submitBtn = document.getElementById('announcementFormSubmit');
+        submitBtn.disabled = true;
+        try {
+          const res = await fetch(editingId ? `/api/announcements/${editingId}` : '/api/announcements', {
+            method: editingId ? 'PATCH' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, body }),
+          });
+          const data = await res.json();
+          if (!res.ok) { errEl.textContent = data.error || 'Failed to save announcement.'; errEl.hidden = false; return; }
+          resetForm();
+          await loadAnnouncements();
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  await loadAnnouncements();
+}
+
 async function loadLeaderboard(mode = 'modules') {
   const wrap = document.getElementById('leaderboardWrap');
   if (!wrap) return;
@@ -2494,6 +2694,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initProfilePage();
   } else if (window.location.pathname === '/leaderboard') {
     initLeaderboardPage();
+  } else if (window.location.pathname === '/announcements') {
+    initAnnouncementsPage();
   } else if (window.location.pathname.startsWith('/u/')) {
     initPublicProfilePage();
   } else if (window.location.pathname.startsWith('/quiz/')) {

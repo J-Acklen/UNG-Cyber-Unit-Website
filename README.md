@@ -85,7 +85,7 @@ cybersec-basics/
 │   └── js/                # Client-side scripts
 │       └── topic-render.js  # Isomorphic: topic lesson-content renderer, imported by both worker.js and main.js
 ├── worker.js              # Cloudflare Worker — the only entry point: routing, API, auth, security headers
-├── schema.sql              # D1 schema (users [incl. streak/last_active/is_public], quiz_results, quiz_rooms, quiz_room_questions, quiz_room_attempts, quiz_room_answers, room_lookup_failures)
+├── schema.sql              # D1 schema (users [incl. streak/last_active/is_public], quiz_results, quiz_rooms, quiz_room_questions, quiz_room_attempts, quiz_room_answers, room_lookup_failures, announcements)
 ├── wrangler.toml           # Cloudflare Workers configuration
 └── package.json
 ```
@@ -118,6 +118,7 @@ cybersec-basics/
 | `/profile` | Logged-in user's profile — account info + rank, pathway badges, topic progress, Quiz Room history (click your username in the navbar). Includes a public/private visibility toggle. |
 | `/leaderboard` | Top Performers leaderboard (member-facing; also a section on the profile). Usernames link to `/u/:username`. |
 | `/u/:username` | Public view of a member's profile (username, avatar, member-since, pathway badges, module/room rank) — only if they've opted in via the profile toggle; otherwise shows a "private" state. `noindex`, not in the sitemap. |
+| `/announcements` | Unit newsletter — signed-in members only (guests explicitly excluded, unlike most of the site). Sortable (Newest/Oldest/A-Z/Z-A cycle button) and searchable by title/date. Admins get inline create/edit/delete. |
 
 ### API
 
@@ -131,6 +132,8 @@ cybersec-basics/
 | `/api/profile/visibility` (POST) | Logged-in user (non-guest) — toggle whether `/u/:username` is viewable by others |
 | `/api/user/:username` | Public subset of a profile (username, avatar, member-since, badges, ranks) if that user has opted in; `403` if private, `404` if unknown/guest |
 | `/api/leaderboard?mode=modules\|rooms` | Top performers — by topic-quiz points (`modules`, default) or quiz-room points (`rooms`); guests excluded |
+| `/api/announcements` (GET) | Signed-in non-guest member — list all announcements, newest first |
+| `/api/announcements` (POST), `/api/announcements/:id` (PATCH/DELETE) | Admin only — create/edit/delete; any admin can manage any post (not creator-restricted) |
 | `/api/admin/users` | Admin — list/manage users |
 | `/api/rooms` (POST/GET) | Instructor — create a room / list your rooms |
 | `/api/rooms/public` | Any logged-in member — browse open public rooms |

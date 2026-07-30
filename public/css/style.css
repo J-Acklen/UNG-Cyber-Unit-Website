@@ -3093,6 +3093,61 @@ footer {
 .lb-mode-btn:hover { color: var(--text); border-color: var(--accent); }
 .lb-mode-btn.is-active { color: var(--accent); border-color: var(--accent); background: rgba(0, 255, 136, 0.08); }
 
+/* ─── Announcements ──────────────────────────────────────── */
+.announcements-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.announcements-toolbar input[type="search"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.9rem;
+}
+.announcements-toolbar input[type="search"]:focus { border-color: var(--accent); outline: none; }
+/* Reuses .lb-mode-btn's look for a single button that cycles state instead
+   of a button group. */
+#announcementSortBtn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+}
+#announcementSortBtn:hover { color: var(--accent); border-color: var(--accent); }
+
+.announcement-card { margin-bottom: 1rem; }
+.announcement-card .card-desc { white-space: pre-wrap; }
+.announcement-footer { flex-wrap: wrap; gap: 0.75rem; }
+.announcement-meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: 'Share Tech Mono', monospace;
+}
+.announcement-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+.announcement-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+.announcement-form-actions { display: flex; gap: 0.75rem; align-items: center; }
+
 /* ═══ Profile name header (large, centered, green) ════════════ */
 .profile-name {
   font-family: 'Share Tech Mono', monospace;

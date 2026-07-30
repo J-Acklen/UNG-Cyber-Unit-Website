@@ -1104,13 +1104,152 @@ describe('GET /api/user/:username', () => {
   });
 });
 
+// ─── /api/announcements ─────────────────────────────────────────────────────────
+
+describe('GET /api/announcements', () => {
+  test('should require a session', async () => {
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements'),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 401);
+  });
+
+  test('should reject guests (excluded from member-only content)', async () => {
+    const cookie = await sessionCookieFor({ sub: 9, username: 'guest-abc', role: 'guest' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements', { headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 403);
+  });
+
+  for (const role of ['member', 'instructor', 'admin']) {
+    test(`should return the announcement list for a ${role}`, async () => {
+      const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role });
+      const res = await worker.fetch(
+        new Request('https://example.com/api/announcements', { headers: { Cookie: cookie } }),
+        { JWT_SECRET: SECRET, DB: mockDB() },
+      );
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.ok(Array.isArray(data.results));
+    });
+  }
+});
+
+describe('POST /api/announcements', () => {
+  const post = (body, cookie) => worker.fetch(
+    new Request('https://example.com/api/announcements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(body),
+    }),
+    { JWT_SECRET: SECRET, DB: mockDB() },
+  );
+
+  for (const role of ['member', 'instructor']) {
+    test(`should reject a ${role} (admin-only)`, async () => {
+      const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role });
+      const res = await post({ title: 'Hi', body: 'Body' }, cookie);
+      assert.equal(res.status, 403);
+    });
+  }
+
+  test('should reject an empty title or body', async () => {
+    const cookie = await sessionCookieFor({ sub: 1, username: 'admin1', role: 'admin' });
+    const res1 = await post({ title: '', body: 'Body' }, cookie);
+    assert.equal(res1.status, 400);
+    const res2 = await post({ title: 'Title', body: '  ' }, cookie);
+    assert.equal(res2.status, 400);
+  });
+
+  test('should create the announcement for an admin', async () => {
+    const db = mockDB();
+    const cookie = await sessionCookieFor({ sub: 1, username: 'admin1', role: 'admin' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ title: 'New Semester', body: 'Welcome back!' }),
+      }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    assert.equal(data.title, 'New Semester');
+    const insert = db.calls.find(c => c.op === 'run');
+    assert.match(insert.sql, /INSERT INTO announcements/);
+    assert.deepEqual(insert.bindings, ['New Semester', 'Welcome back!', 1, data.created_at]);
+  });
+});
+
+describe('PATCH /api/announcements/:id', () => {
+  test('should reject a non-admin', async () => {
+    const cookie = await sessionCookieFor({ sub: 2, username: 'inst', role: 'instructor' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements/5', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ title: 'X', body: 'Y' }),
+      }),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 403);
+  });
+
+  test('should let any admin edit any announcement (no per-creator ownership check)', async () => {
+    // Deliberately a *different* admin than whoever created id 5 — this
+    // codebase treats announcements as shared unit-wide content, unlike Quiz
+    // Rooms' creator-or-admin ownership pattern.
+    const db = mockDB();
+    const cookie = await sessionCookieFor({ sub: 99, username: 'another-admin', role: 'admin' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements/5', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ title: 'Updated Title', body: 'Updated body' }),
+      }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 200);
+    const update = db.calls.find(c => c.op === 'run');
+    assert.match(update.sql, /UPDATE announcements SET title = \?, body = \?, updated_at = \? WHERE id = \?/);
+    assert.equal(update.bindings[0], 'Updated Title');
+    assert.equal(update.bindings[3], '5');
+  });
+});
+
+describe('DELETE /api/announcements/:id', () => {
+  test('should reject a non-admin', async () => {
+    const cookie = await sessionCookieFor({ sub: 2, username: 'member1', role: 'member' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements/5', { method: 'DELETE', headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 403);
+  });
+
+  test('should delete for an admin', async () => {
+    const db = mockDB();
+    const cookie = await sessionCookieFor({ sub: 1, username: 'admin1', role: 'admin' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements/5', { method: 'DELETE', headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 200);
+    const del = db.calls.find(c => c.op === 'run');
+    assert.match(del.sql, /DELETE FROM announcements WHERE id = \?/);
+  });
+});
+
 // ─── Page rendering (served through env.ASSETS, backed by real public/*.html) ──
 // These exercise the actual SSR injection paths in worker.js — the class of bug
 // that shipped silently before (an unknown /topic/:id serving a 200 "soft 404",
 // and topic pages shipping only a client-rendered "Loading topic..." shell).
 
 describe('Static/simple pages', () => {
-  const pages = ['/', '/start', '/about', '/resources', '/profile', '/admin', '/instructor', '/quiz', '/leaderboard'];
+  const pages = ['/', '/start', '/about', '/resources', '/profile', '/admin', '/instructor', '/quiz', '/leaderboard', '/announcements'];
 
   for (const path of pages) {
     test(`GET ${path} should render 200 HTML with no leftover template placeholders`, async () => {

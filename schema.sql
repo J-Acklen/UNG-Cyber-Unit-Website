@@ -74,3 +74,13 @@ CREATE TABLE IF NOT EXISTS quiz_room_answers (
   FOREIGN KEY (attempt_id)  REFERENCES quiz_room_attempts(id),
   FOREIGN KEY (question_id) REFERENCES quiz_room_questions(id)
 );
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  title       TEXT    NOT NULL,
+  body        TEXT    NOT NULL,
+  created_by  INTEGER NOT NULL,
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER,
+  FOREIGN KEY (created_by) REFERENCES users(id)
+);

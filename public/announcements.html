@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>CyberUnit @ UNG — Announcements</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="/resources">Resources</a></li>
+        <li><a href="/about">About</a></li>
+        <li id="authNavItem"></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+    <div class="container" style="max-width: 800px; padding: 2rem 1rem;">
+
+      <header style="margin-bottom: 2rem;">
+        <h1>// Unit Announcements</h1>
+        <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; margin: 0.4rem 0 0;">
+          News and updates from the Cyber Unit
+        </p>
+      </header>
+
+      <!-- Shown when not signed in, or signed in as a guest -->
+      <div id="loginGate" class="login-gate" hidden>
+        <p style="font-size:2rem;margin-bottom:0.75rem;">🔒</p>
+        <p id="loginGateMsg" style="margin-bottom:1.25rem;">Sign in to view announcements.</p>
+        <button class="btn btn-primary" id="loginGateBtn">Sign In</button>
+      </div>
+
+      <!-- Shown when signed in as a member/instructor/admin -->
+      <div id="announcementsContent" hidden>
+
+        <!-- Admin-only: create a new announcement -->
+        <div id="announcementFormWrap" hidden></div>
+
+        <div class="announcements-toolbar">
+          <input type="search" id="announcementSearch" placeholder="Search by title or date…" aria-label="Search announcements">
+          <button type="button" class="btn btn-sm" id="announcementSortBtn">Sort: Newest First</button>
+        </div>
+
+        <div id="announcementsList">
+          <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace;">Loading...</p>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
