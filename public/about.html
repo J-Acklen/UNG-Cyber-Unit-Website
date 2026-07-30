@@ -17,12 +17,11 @@
   <meta name="twitter:card" content="summary">
 
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
   <style>
     /* ─── About Page Styles ──────────────────────────────────── */
     .about-hero {
-      background: linear-gradient(135deg, var(--bg) 0%, var(--surface) 50%, rgba(var(--accent-rgb), 0.08) 100%);
+      background: linear-gradient(135deg, #0d0d0d 0%, #141414 50%, #0d1a0d 100%);
       border-bottom: 1px solid var(--border);
       padding: 4rem 0 3rem;
       text-align: center;
@@ -31,7 +30,7 @@
       width: 120px;
       height: auto;
       margin-bottom: 1.5rem;
-      filter: drop-shadow(0 0 16px rgba(var(--accent-rgb),0.3));
+      filter: drop-shadow(0 0 16px rgba(0,255,136,0.3));
     }
     .about-hero h1 {
       font-size: clamp(1.6rem, 4vw, 2.4rem);
@@ -138,8 +137,8 @@
     }
 
     .mission-statement {
-      background: linear-gradient(135deg, rgba(var(--accent-rgb),0.06), var(--surface));
-      border: 1px solid rgba(var(--accent-rgb),0.2);
+      background: linear-gradient(135deg, #0d1a0d, #141414);
+      border: 1px solid rgba(0,255,136,0.2);
       border-left: 3px solid var(--accent);
       border-radius: 8px;
       padding: 1.75rem;
@@ -182,21 +181,21 @@
       flex-shrink: 0;
     }
     .org-node:hover {
-      border-color: rgba(var(--accent-rgb),0.4);
-      box-shadow: 0 0 12px rgba(var(--accent-rgb),0.1);
+      border-color: rgba(0,255,136,0.4);
+      box-shadow: 0 0 12px rgba(0,255,136,0.1);
     }
     .org-node.top-node {
-      border-color: rgba(var(--accent-rgb),0.5);
-      box-shadow: 0 0 18px rgba(var(--accent-rgb),0.12);
+      border-color: rgba(0,255,136,0.5);
+      box-shadow: 0 0 18px rgba(0,255,136,0.12);
       min-width: 180px;
     }
     .org-node.advisor-node {
-      border-color: rgba(var(--info-rgb),0.4);
+      border-color: rgba(68,136,255,0.4);
       border-style: dashed;
       min-width: 160px;
     }
     .org-node.advisor-node .node-title {
-      color: var(--info);
+      color: #4488ff;
     }
     .node-icon {
       font-size: 1.5rem;
@@ -256,11 +255,11 @@
       min-width: 110px;
       max-width: 140px;
       padding: 0.75rem 0.9rem;
-      border-color: rgba(var(--warn-rgb),0.2);
+      border-color: rgba(255,170,0,0.2);
       flex-shrink: 0;
     }
     .staff-panel .org-node .node-title { color: var(--warn); }
-    .staff-panel .org-node:hover { border-color: rgba(var(--warn-rgb),0.4); box-shadow: none; }
+    .staff-panel .org-node:hover { border-color: rgba(255,170,0,0.4); box-shadow: none; }
 
     /* ─── Role Cards ─────────────────────────────────────────── */
     .roles-grid {
@@ -276,7 +275,7 @@
       padding: 1.5rem;
       transition: border-color 0.2s;
     }
-    .role-card:hover { border-color: rgba(var(--accent-rgb),0.25); }
+    .role-card:hover { border-color: rgba(0,255,136,0.25); }
     .role-card-header {
       display: flex;
       align-items: center;
@@ -315,8 +314,8 @@
       font-size: 0.65rem;
       padding: 0.15rem 0.5rem;
       border-radius: 4px;
-      background: rgba(var(--accent-rgb),0.1);
-      border: 1px solid rgba(var(--accent-rgb),0.25);
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.25);
       color: var(--accent);
       margin-left: 0.5rem;
       vertical-align: middle;
@@ -365,8 +364,8 @@
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .doc-link:hover {
-      border-color: rgba(var(--accent-rgb),0.35);
-      box-shadow: 0 0 12px rgba(var(--accent-rgb),0.07);
+      border-color: rgba(0,255,136,0.35);
+      box-shadow: 0 0 12px rgba(0,255,136,0.07);
       color: inherit;
     }
     .doc-icon { font-size: 1.6rem; flex-shrink: 0; }
@@ -533,7 +532,7 @@
               <div class="node-abbr">XO — Executive Officer</div>
             </div>
 
-            <div class="org-node" style="border-color:rgba(var(--accent-rgb),0.3); border-style:dashed; flex-shrink:0;">
+            <div class="org-node" style="border-color:rgba(0,255,136,0.3); border-style:dashed; flex-shrink:0;">
               <div class="node-icon">🤝</div>
               <div class="node-title">Deputy Team Leader</div>
               <div class="node-abbr">DTL — Civilian Lead</div>
@@ -581,9 +580,9 @@
 
           <!-- Tier 4: Element Leaders -->
           <div class="org-level" style="gap:1rem;">
-            <div class="org-node" style="min-width:140px; border-color:rgba(var(--info-rgb),0.4);">
+            <div class="org-node" style="min-width:140px; border-color:rgba(68,136,255,0.4);">
               <div class="node-icon">🔵</div>
-              <div class="node-title" style="color:var(--info);">Element Leader</div>
+              <div class="node-title" style="color:#4488ff;">Element Leader</div>
               <div class="node-abbr">Blue — Junior</div>
             </div>
             <div class="org-node" style="min-width:140px; border-color:rgba(255,80,80,0.4);">
@@ -750,7 +749,7 @@
           <li>Complete a C.I.P.H.E.R project to advance in rank</li>
         </ul>
 
-        <div class="info-card" style="margin-top:1.25rem; border-color:rgba(var(--warn-rgb),0.2);">
+        <div class="info-card" style="margin-top:1.25rem; border-color:rgba(255,170,0,0.2);">
           <h3 style="color:var(--warn);">Promotion Path</h3>
           <p>
             New members must complete <strong style="color:var(--text);">Promotion Week</strong> - a physical aptitude test (cadets only),

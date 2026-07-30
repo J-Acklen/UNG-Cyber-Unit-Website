@@ -43,55 +43,6 @@ function initHamburger() {
   });
 }
 
-// ─── Scroll Perf ──────────────────────────────────────────────────────────────
-
-// Card-heavy pages (resources, about) sweep dozens of :hover targets under a
-// stationary cursor during a fast scroll, retriggering their hover transitions
-// (transform/box-shadow/border-color) on every card that passes underneath —
-// visible as scroll jank. Suppressing pointer-events (and so :hover matching)
-// while a scroll is in flight avoids that without touching normal hover UX.
-function initScrollPerf() {
-  let scrollTimeout;
-  window.addEventListener('scroll', () => {
-    document.body.classList.add('is-scrolling');
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => document.body.classList.remove('is-scrolling'), 150);
-  }, { passive: true });
-}
-
-// ─── Theme Toggle ─────────────────────────────────────────────────────────────
-
-const THEME_STORAGE_KEY = 'cyberunit-theme';
-const SUN_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>';
-const MOON_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"></path></svg>';
-
-function initThemeToggle() {
-  const btn = document.createElement('button');
-  btn.className = 'theme-toggle';
-  btn.type = 'button';
-
-  const applyIcon = (theme) => {
-    const isLight = theme === 'light';
-    btn.innerHTML = isLight ? MOON_ICON : SUN_ICON;
-    btn.setAttribute('aria-label', isLight ? 'Switch to dark theme' : 'Switch to light theme');
-  };
-
-  applyIcon(document.documentElement.getAttribute('data-theme'));
-
-  btn.addEventListener('click', () => {
-    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-    if (next === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-    localStorage.setItem(THEME_STORAGE_KEY, next);
-    applyIcon(next);
-  });
-
-  document.body.appendChild(btn);
-}
-
 // ─── Typewriter Effect ────────────────────────────────────────────────────────
 
 function initTypewriter() {
@@ -3141,8 +3092,6 @@ function renderRoomResults(attempt, room, wasAlreadyAttempted) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initHamburger();
-  initScrollPerf();
-  initThemeToggle();
   initSmoothScroll();
   await initAuth();
 
