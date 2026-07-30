@@ -1647,11 +1647,17 @@ export default {
         const session = await getSession(request, env.JWT_SECRET);
         if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
         let avatar = null;
+        let hasUnreadAnnouncements = false;
         if (env.DB) {
-          const row = await env.DB.prepare('SELECT avatar FROM users WHERE id = ?').bind(session.sub).first();
+          const row = await env.DB.prepare('SELECT avatar, last_seen_announcements FROM users WHERE id = ?').bind(session.sub).first();
           avatar = row?.avatar ?? null;
+          // Guests can't view /announcements at all, so never flag them as unread.
+          if (session.role !== 'guest') {
+            const latest = await env.DB.prepare('SELECT MAX(created_at) AS latest FROM announcements').first();
+            hasUnreadAnnouncements = !!latest?.latest && (row?.last_seen_announcements ?? 0) < latest.latest;
+          }
         }
-        return jsonResponse({ id: session.sub, username: session.username, role: session.role ?? 'member', avatar });
+        return jsonResponse({ id: session.sub, username: session.username, role: session.role ?? 'member', avatar, hasUnreadAnnouncements });
       }
 
       // GET /api/progress  — returns [] if not authenticated (graceful for logged-out users)
@@ -1950,6 +1956,14 @@ export default {
           ORDER BY a.created_at DESC
         `).all();
         return jsonResponse({ results: results ?? [] });
+      }
+
+      // POST /api/announcements/seen — any signed-in non-guest member marks
+      // themself caught up, clearing the unread badge (see /api/auth/me).
+      if (path === '/api/announcements/seen' && request.method === 'POST') {
+        await env.DB.prepare('UPDATE users SET last_seen_announcements = ? WHERE id = ?')
+          .bind(Date.now(), session.sub).run();
+        return jsonResponse({ ok: true });
       }
 
       // POST /api/announcements — admin creates a new announcement.

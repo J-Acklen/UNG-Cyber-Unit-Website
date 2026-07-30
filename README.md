@@ -126,7 +126,7 @@ cybersec-basics/
 |-------|-------------|
 | `/api/topics` | JSON list of all topics (summary) |
 | `/api/topic/:id` | JSON data for a single topic |
-| `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me` | Account auth |
+| `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me` | Account auth. `/api/auth/me` also reports `hasUnreadAnnouncements` (always `false` for guests) — drives the nav badge. |
 | `/api/progress` | Logged-in user's per-topic quiz progress |
 | `/api/profile` | Logged-in user's account details + Quiz Room attempt history + earned pathway badges + own `isPublic` flag |
 | `/api/profile/visibility` (POST) | Logged-in user (non-guest) — toggle whether `/u/:username` is viewable by others |
@@ -134,6 +134,7 @@ cybersec-basics/
 | `/api/leaderboard?mode=modules\|rooms` | Top performers — by topic-quiz points (`modules`, default) or quiz-room points (`rooms`); guests excluded |
 | `/api/announcements` (GET) | Signed-in non-guest member — list all announcements, newest first |
 | `/api/announcements` (POST), `/api/announcements/:id` (PATCH/DELETE) | Admin only — create/edit/delete; any admin can manage any post (not creator-restricted) |
+| `/api/announcements/seen` (POST) | Signed-in non-guest member — stamps `users.last_seen_announcements`, clearing the nav unread badge |
 | `/api/admin/users` | Admin — list/manage users |
 | `/api/rooms` (POST/GET) | Instructor — create a room / list your rooms |
 | `/api/rooms/public` | Any logged-in member — browse open public rooms |

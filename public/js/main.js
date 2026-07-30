@@ -646,21 +646,23 @@ function updateAuthNav() {
   const navItem = document.getElementById('authNavItem');
   if (!navItem) return;
 
-  // Single ☰ menu: Beginner Pathway, Join Room, and Profile for everyone,
-  // plus role-gated panels. Server routes still enforce roles; this gating
-  // only controls visibility. Guest login lives in the Sign In modal instead.
+  // Single ☰ menu: Announcements first (with an unread dot), then Beginner
+  // Pathway/Join Room/Leaderboard/Profile for everyone, plus role-gated
+  // panels. Server routes still enforce roles; this gating only controls
+  // visibility. Guest login lives in the Sign In modal instead.
+  const showUnreadDot = currentUser?.hasUnreadAnnouncements;
   const menuItems = [
+    `<a href="/announcements" class="nav-dropdown-item">Announcements${showUnreadDot ? ' <span class="nav-badge-dot" aria-label="Unread announcements"></span>' : ''}</a>`,
     `<a href="/start" class="nav-dropdown-item">Beginner Pathway</a>`,
     `<a href="/quiz" class="nav-dropdown-item">Join Room</a>`,
     `<a href="/leaderboard" class="nav-dropdown-item">Leaderboard</a>`,
-    `<a href="/announcements" class="nav-dropdown-item">Announcements</a>`,
     `<a href="/profile" class="nav-dropdown-item">Profile</a>`,
     isInstructor() ? `<a href="/instructor" class="nav-dropdown-item">Instructor Panel</a>` : '',
     currentUser?.role === 'admin' ? `<a href="/admin" class="nav-dropdown-item nav-dropdown-item--danger">Admin Panel</a>` : '',
   ].filter(Boolean).join('');
 
   const menuBtn = `<div class="nav-dropdown" id="navMenuDropdown">
-      <button class="nav-dropdown-toggle" id="navMenuBtn" aria-label="Menu" aria-expanded="false">☰</button>
+      <button class="nav-dropdown-toggle" id="navMenuBtn" aria-label="Menu${showUnreadDot ? ' (unread announcements)' : ''}" aria-expanded="false">☰${showUnreadDot ? '<span class="nav-badge-dot" aria-hidden="true"></span>' : ''}</button>
       <div class="nav-dropdown-menu" id="navMenuList" hidden>${menuItems}</div>
     </div>`;
 
@@ -1802,6 +1804,17 @@ async function initAnnouncementsPage() {
     return;
   }
   if (content) content.hidden = false;
+
+  // Clear the unread badge: mark seen server-side, then update the nav
+  // in-place so it disappears without needing a page reload.
+  if (currentUser.hasUnreadAnnouncements) {
+    fetch('/api/announcements/seen', { method: 'POST' }).then(res => {
+      if (res.ok) {
+        currentUser.hasUnreadAnnouncements = false;
+        updateAuthNav();
+      }
+    }).catch(() => {});
+  }
 
   let allAnnouncements = [];
   const SORT_CYCLE = { newest: 'oldest', oldest: 'az', az: 'za', za: 'newest' };

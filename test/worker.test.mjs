@@ -117,6 +117,22 @@ function mockPublicProfileDB(usersByUsername) {
   };
 }
 
+// A mock D1 for GET /api/auth/me's unread-announcements check: resolves the
+// per-user `last_seen_announcements` lookup and the `MAX(created_at)` over
+// announcements independently, so a test can set each side of the comparison.
+function mockMeDB({ lastSeen = null, latestAnnouncement = null } = {}) {
+  return {
+    prepare(sql) {
+      const first = async () => {
+        if (/SELECT avatar, last_seen_announcements/.test(sql)) return { avatar: null, last_seen_announcements: lastSeen };
+        if (/MAX\(created_at\)/.test(sql)) return { latest: latestAnnouncement };
+        return null;
+      };
+      return { bind: () => ({ first }), first };
+    },
+  };
+}
+
 async function sessionCookieFor(user) {
   const token = await signJWT(
     { sub: user.sub, username: user.username, role: user.role, exp: Math.floor(Date.now() / 1000) + 3600 },
@@ -942,6 +958,72 @@ describe('GET /api/leaderboard', () => {
     );
     const data = await res.json();
     assert.equal(data.me.isGuest, true);
+  });
+});
+
+// ─── GET /api/auth/me (unread-announcements flag) ───────────────────────────────
+
+describe('GET /api/auth/me', () => {
+  const get = (cookie, env) => worker.fetch(
+    new Request('https://example.com/api/auth/me', { headers: { Cookie: cookie } }),
+    env,
+  );
+
+  test('hasUnreadAnnouncements should be true when never seen and a post exists', async () => {
+    const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+    const res = await get(cookie, { JWT_SECRET: SECRET, DB: mockMeDB({ lastSeen: null, latestAnnouncement: 5000 }) });
+    assert.equal((await res.json()).hasUnreadAnnouncements, true);
+  });
+
+  test('hasUnreadAnnouncements should be false once seen at/after the latest post', async () => {
+    const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+    const res = await get(cookie, { JWT_SECRET: SECRET, DB: mockMeDB({ lastSeen: 5000, latestAnnouncement: 5000 }) });
+    assert.equal((await res.json()).hasUnreadAnnouncements, false);
+  });
+
+  test('hasUnreadAnnouncements should be false when there are no announcements yet', async () => {
+    const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+    const res = await get(cookie, { JWT_SECRET: SECRET, DB: mockMeDB({ lastSeen: null, latestAnnouncement: null }) });
+    assert.equal((await res.json()).hasUnreadAnnouncements, false);
+  });
+
+  test('hasUnreadAnnouncements should always be false for guests, even with unseen posts', async () => {
+    // Guests can't view /announcements at all — no point flagging them.
+    const cookie = await sessionCookieFor({ sub: 9, username: 'guest-x', role: 'guest' });
+    const res = await get(cookie, { JWT_SECRET: SECRET, DB: mockMeDB({ lastSeen: null, latestAnnouncement: 5000 }) });
+    assert.equal((await res.json()).hasUnreadAnnouncements, false);
+  });
+});
+
+describe('POST /api/announcements/seen', () => {
+  test('should require a session', async () => {
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements/seen', { method: 'POST' }),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 401);
+  });
+
+  test('should reject guests', async () => {
+    const cookie = await sessionCookieFor({ sub: 9, username: 'guest-x', role: 'guest' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements/seen', { method: 'POST', headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: mockDB() },
+    );
+    assert.equal(res.status, 403);
+  });
+
+  test('should stamp only the caller\'s own row', async () => {
+    const db = mockDB();
+    const cookie = await sessionCookieFor({ sub: 42, username: 'alice', role: 'member' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/announcements/seen', { method: 'POST', headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 200);
+    const update = db.calls.find(c => c.op === 'run');
+    assert.match(update.sql, /UPDATE users SET last_seen_announcements = \? WHERE id = \?/);
+    assert.equal(update.bindings[1], 42);
   });
 });
 

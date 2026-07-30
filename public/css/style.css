@@ -1713,6 +1713,7 @@ footer {
   position: relative;
 }
 .nav-dropdown-toggle {
+  position: relative;
   background: none;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -1722,6 +1723,26 @@ footer {
   padding: 0.3rem 0.5rem;
   line-height: 1;
   transition: border-color 0.2s, color 0.2s;
+}
+/* Unread-announcements indicator — a small dot on the hamburger toggle
+   (visible without opening the menu) and inline next to the menu item
+   itself. Cleared by initAnnouncementsPage() via POST /api/announcements/seen. */
+.nav-badge-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.nav-dropdown-toggle .nav-badge-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  box-shadow: 0 0 4px rgba(255, 68, 68, 0.7);
+}
+.nav-dropdown-item .nav-badge-dot {
+  margin-left: 0.4rem;
+  vertical-align: middle;
 }
 .nav-dropdown-toggle:hover {
   border-color: var(--accent);
@@ -1740,7 +1761,8 @@ footer {
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
 .nav-dropdown-item {
-  display: block;
+  display: flex;
+  align-items: center;
   padding: 0.65rem 1rem;
   font-family: 'Share Tech Mono', monospace;
   font-size: 0.82rem;
