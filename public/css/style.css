@@ -29,6 +29,15 @@
 /* Ensure [hidden] always wins over display: flex/grid rules */
 [hidden] { display: none !important; }
 
+/* Suppress hover-triggered transitions while a scroll is in flight — see
+   initScrollPerf() in main.js. Card grids (resources: 42 cards, about: 18)
+   otherwise sweep dozens of :hover targets under a stationary cursor during
+   a fast scroll, retriggering each card's transform/box-shadow transition.
+   Re-enables ~150ms after the last scroll event, once scrolling settles. */
+body.is-scrolling {
+  pointer-events: none;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -120,8 +129,11 @@ main {
   left: 0;
   right: 0;
   z-index: 100;
-  background: rgba(13, 13, 13, 0.95);
-  backdrop-filter: blur(8px);
+  /* Solid, not translucent+blurred: backdrop-filter on a fixed element forces
+     the browser to re-sample everything scrolling underneath it every frame,
+     which is a major cause of scroll jank (measured: cut RasterTask ~35% on
+     the /resources page). */
+  background: #0d0d0d;
   border-bottom: 1px solid var(--border);
   height: 60px;
   display: flex;

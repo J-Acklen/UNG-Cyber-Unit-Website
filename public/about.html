@@ -58,6 +58,11 @@
     .about-section {
       padding: 3rem 0;
       border-bottom: 1px solid var(--border);
+      /* Let the browser skip layout/paint for sections that are off-screen —
+         this is a long page (7 sections) and most of it is never in the
+         viewport at once. */
+      content-visibility: auto;
+      contain-intrinsic-size: auto 700px;
     }
     .about-section:last-of-type {
       border-bottom: none;

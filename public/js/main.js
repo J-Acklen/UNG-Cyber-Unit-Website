@@ -24,6 +24,18 @@ function isHomePage() {
 
 // ─── Navbar Hamburger ─────────────────────────────────────────────────────────
 
+// ─── Scroll Perf ──────────────────────────────────────────────────────────────
+
+// See the body.is-scrolling rule in style.css for why this exists.
+function initScrollPerf() {
+  let scrollTimeout;
+  window.addEventListener('scroll', () => {
+    document.body.classList.add('is-scrolling');
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => document.body.classList.remove('is-scrolling'), 150);
+  }, { passive: true });
+}
+
 function initHamburger() {
   const btn   = document.getElementById('hamburger');
   const links = document.getElementById('navLinks');
@@ -3092,6 +3104,7 @@ function renderRoomResults(attempt, room, wasAlreadyAttempted) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initHamburger();
+  initScrollPerf();
   initSmoothScroll();
   await initAuth();
 

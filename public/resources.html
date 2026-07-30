@@ -19,7 +19,14 @@
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="/css/style.css">
   <style>
-    .res-section { margin-bottom: 3rem; }
+    .res-section {
+      margin-bottom: 3rem;
+      /* Let the browser skip layout/paint for sections that are off-screen —
+         this is a long page (7 sections, ~40 cards) and most of it is never
+         in the viewport at once. */
+      content-visibility: auto;
+      contain-intrinsic-size: auto 900px;
+    }
     .res-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
