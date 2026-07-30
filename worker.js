@@ -1534,6 +1534,8 @@ export {
   parseCSV,
   validateJSONQuestions,
   escapeHtml,
+  renderContent,
+  getTopicSVG,
   dateStrUTC,
   nextStreak,
   topics,

@@ -22,6 +22,8 @@ import worker, {
   parseCSV,
   validateJSONQuestions,
   escapeHtml,
+  renderContent,
+  getTopicSVG,
   dateStrUTC,
   nextStreak,
   topics,
@@ -517,6 +519,75 @@ describe('escapeHtml', () => {
     // Edge case: numbers/undefined must not throw.
     assert.equal(escapeHtml(42), '42');
     assert.equal(escapeHtml(undefined), 'undefined');
+  });
+});
+
+// ─── getTopicSVG ────────────────────────────────────────────────────────────────
+// Shared with public/js/main.js via public/js/topic-render.js — see CLAUDE.md.
+
+describe('getTopicSVG', () => {
+  test('should return an empty string for an unknown topic id', () => {
+    // No matching diagram — the caller (renderTopicPage/worker route) should
+    // just render nothing rather than a broken/undefined chunk of markup.
+    assert.equal(getTopicSVG('99', '🛡️', 'Nonexistent Topic'), '');
+  });
+
+  test('should wrap a known topic id\'s diagram in a labeled, accessible container', () => {
+    const html = getTopicSVG('01', '🛡️', 'What is Cybersecurity?');
+    assert.match(html, /class="topic-svg-wrap"/);
+    assert.match(html, /role="img"/);
+    assert.match(html, /aria-label="What is Cybersecurity\? illustration"/);
+    assert.match(html, /<svg/);
+  });
+
+  test('should escape the title in the aria-label', () => {
+    // topic.title is escaped everywhere else it's used (topicCard,
+    // topicMetaTags) — this wrapper must match, or a title containing a
+    // quote/angle-bracket would break the attribute or inject markup.
+    const html = getTopicSVG('01', '🛡️', `"><script>alert(1)</script>`);
+    assert.doesNotMatch(html, /<script>alert/);
+    assert.match(html, /aria-label="&quot;&gt;&lt;script&gt;/);
+  });
+});
+
+// ─── renderContent ──────────────────────────────────────────────────────────────
+// Full topic content (all 11 real topics) is covered end-to-end by the
+// GET /topic/:id tests below; these are narrower, faster checks that each
+// section-type branch produces its expected fragment from a minimal fixture.
+
+describe('renderContent', () => {
+  test('should render a plain heading+body section', () => {
+    const html = renderContent({ fullContent: { sections: [
+      { heading: 'Intro', body: 'Some text.' },
+    ] } });
+    assert.match(html, /<h3>Intro<\/h3>/);
+    assert.match(html, /<p>Some text\.<\/p>/);
+  });
+
+  test('should render the CIA triad, threat cards, and a callout when flagged', () => {
+    const html = renderContent({ fullContent: { sections: [
+      { heading: 'CIA', cia: true },
+      { heading: 'Threats', threats: [{ icon: '🎣', name: 'Phishing', desc: 'Fake emails.' }] },
+      { heading: 'Note', callout: { type: 'warn', text: 'Careful!' } },
+    ] } });
+    assert.match(html, /class="cia-triad"/);
+    assert.match(html, /Confidentiality/);
+    assert.match(html, /Phishing/);
+    assert.match(html, /class="callout callout-warn"/);
+  });
+
+  test('should render the optional mentor hook and key takeaway around the sections', () => {
+    const withFraming = renderContent({
+      hook: 'Why this matters.',
+      takeaway: 'The one thing to remember.',
+      fullContent: { sections: [{ heading: 'X', body: 'Y' }] },
+    });
+    assert.match(withFraming, /class="topic-hook"/);
+    assert.match(withFraming, /class="topic-takeaway"/);
+
+    const withoutFraming = renderContent({ fullContent: { sections: [{ heading: 'X', body: 'Y' }] } });
+    assert.doesNotMatch(withoutFraming, /topic-hook/);
+    assert.doesNotMatch(withoutFraming, /topic-takeaway/);
   });
 });
 

@@ -627,5 +627,5 @@ export function getTopicSVG(id, icon, title) {
 
   const svg = svgs[id];
   if (!svg) return '';
-  return `<div class="topic-svg-wrap" role="img" aria-label="${title} illustration">${svg}</div>`;
+  return `<div class="topic-svg-wrap" role="img" aria-label="${escapeHtml(title)} illustration">${svg}</div>`;
 }
