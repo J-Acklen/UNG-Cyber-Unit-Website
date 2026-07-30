@@ -380,6 +380,15 @@ body > main,
   display: flex;
   flex-direction: column;
 }
+/* Shared base for the static (non-hover, non-flex-column) "surface box" look
+   used by page-specific card-like components (about.html's info/partner/org
+   cards, etc.) — those pages only add their own layout/sizing on top. */
+.surface-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
 .card:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 30px rgba(0, 255, 136, 0.08);
@@ -709,35 +718,6 @@ code {
   font-family: 'Share Tech Mono', monospace;
   font-size: 0.8rem;
   color: var(--text-muted);
-}
-
-/* ─── Topic Image ────────────────────────────────────────── */
-.topic-image-wrap {
-  margin: 1.5rem 0 2rem;
-}
-.topic-image-wrap img {
-  width: 100%;
-  max-height: 300px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
-.topic-image-placeholder {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 0.75rem;
-  color: var(--text-muted);
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 0.9rem;
-}
-.topic-image-placeholder .placeholder-icon {
-  font-size: 3rem;
 }
 
 /* ─── Topic Content ──────────────────────────────────────── */
@@ -1778,15 +1758,6 @@ footer {
   color: var(--danger);
 }
 
-/* A <button> styled to sit flush with the anchor menu items. */
-.nav-dropdown-item--button {
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
 /* ─── Auth Modal ─────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
@@ -2436,13 +2407,6 @@ footer {
 
 /* ─── Quiz Entry Page ───────────────────────────────── */
 
-.quiz-entry-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 4rem 1rem;
-}
-
 .quiz-entry-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -2450,20 +2414,6 @@ footer {
   padding: 2.5rem 2rem;
   width: 100%;
   max-width: 440px;
-}
-
-.quiz-entry-title {
-  font-family: 'Share Tech Mono', monospace;
-  color: var(--accent);
-  font-size: 1.4rem;
-  margin: 0 0 0.4rem;
-}
-
-.quiz-entry-subtitle {
-  color: var(--text-muted);
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 0.82rem;
-  margin: 0 0 1.5rem;
 }
 
 .quiz-entry-input-wrap {

@@ -33,14 +33,10 @@
       gap: 1rem;
       margin-top: 1rem;
     }
+    /* Base surface/border/radius/padding/flex/transition come from the
+       shared .card class in style.css — only the differences live here. */
     .res-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
       padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
       text-decoration: none;
       color: inherit;
     }
@@ -210,7 +206,7 @@
         <h2 class="section-heading"><span>01 //</span> Practice Platforms</h2>
         <div class="res-grid">
 
-          <a href="https://pwn.college" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://pwn.college" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">pwn.college</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -222,7 +218,7 @@
             </div>
           </a>
 
-          <a href="https://www.hackthebox.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.hackthebox.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">HackTheBox</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -234,7 +230,7 @@
             </div>
           </a>
 
-          <a href="https://tryhackme.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://tryhackme.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">TryHackMe</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -246,7 +242,7 @@
             </div>
           </a>
 
-          <a href="https://overthewire.org/wargames/" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://overthewire.org/wargames/" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">OverTheWire</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -258,7 +254,7 @@
             </div>
           </a>
 
-          <a href="https://portswigger.net/web-security" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://portswigger.net/web-security" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">PortSwigger Web Security Academy</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -270,7 +266,7 @@
             </div>
           </a>
 
-          <a href="https://pentesterlab.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://pentesterlab.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">PentesterLab</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -282,7 +278,7 @@
             </div>
           </a>
 
-          <a href="https://www.vulnhub.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.vulnhub.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">VulnHub</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -294,7 +290,7 @@
             </div>
           </a>
 
-          <a href="https://root-me.org" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://root-me.org" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Root-Me</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -306,7 +302,7 @@
             </div>
           </a>
 
-          <a href="https://cryptohack.org" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://cryptohack.org" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">CryptoHack</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -318,7 +314,7 @@
             </div>
           </a>
 
-          <a href="https://www.hacker101.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.hacker101.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Hacker101 (HackerOne)</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -340,7 +336,7 @@
         <h2 class="section-heading"><span>02 //</span> CTF Competitions</h2>
         <div class="res-grid">
 
-          <a href="https://picoctf.org" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://picoctf.org" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">picoCTF</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -352,7 +348,7 @@
             </div>
           </a>
 
-          <a href="https://ctftime.org" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://ctftime.org" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">CTFtime.org</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -364,7 +360,7 @@
             </div>
           </a>
 
-          <a href="https://nationalcyberleague.org" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://nationalcyberleague.org" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">National Cyber League (NCL)</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -376,7 +372,7 @@
             </div>
           </a>
 
-          <a href="https://csaw.engineering.nyu.edu" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://csaw.engineering.nyu.edu" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">CSAW CTF (NYU)</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -388,7 +384,7 @@
             </div>
           </a>
 
-          <a href="https://capturetheflag.withgoogle.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://capturetheflag.withgoogle.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Google CTF</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -400,7 +396,7 @@
             </div>
           </a>
 
-          <a href="https://github.com/ctf-wiki/ctf-wiki" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://github.com/ctf-wiki/ctf-wiki" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">CTF Wiki</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -422,7 +418,7 @@
         <h2 class="section-heading"><span>03 //</span> Learning Platforms & Courses</h2>
         <div class="res-grid">
 
-          <a href="https://tcm-sec.com/academy" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://tcm-sec.com/academy" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">TCM Security Academy</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -434,7 +430,7 @@
             </div>
           </a>
 
-          <a href="https://www.cybrary.it" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.cybrary.it" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Cybrary</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -446,7 +442,7 @@
             </div>
           </a>
 
-          <a href="https://ine.com/learning/areas/cyber-security" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://ine.com/learning/areas/cyber-security" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">INE Security (eJPT / eCPPT)</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -458,7 +454,7 @@
             </div>
           </a>
 
-          <a href="https://www.professormesser.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.professormesser.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Professor Messer</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -470,7 +466,7 @@
             </div>
           </a>
 
-          <a href="https://www.sans.org/cyber-security-courses/" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.sans.org/cyber-security-courses/" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">SANS Institute</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -482,7 +478,7 @@
             </div>
           </a>
 
-          <a href="https://www.coursera.org/professional-certificates/google-cybersecurity" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.coursera.org/professional-certificates/google-cybersecurity" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Google Cybersecurity Certificate</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -504,7 +500,7 @@
         <h2 class="section-heading"><span>04 //</span> Tools & References</h2>
         <div class="res-grid">
 
-          <a href="https://gtfobins.github.io" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://gtfobins.github.io" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">GTFOBins</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -516,7 +512,7 @@
             </div>
           </a>
 
-          <a href="https://lolbas-project.github.io" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://lolbas-project.github.io" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">LOLBAS</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -528,7 +524,7 @@
             </div>
           </a>
 
-          <a href="https://book.hacktricks.xyz" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://book.hacktricks.xyz" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">HackTricks</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -540,7 +536,7 @@
             </div>
           </a>
 
-          <a href="https://www.exploit-db.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.exploit-db.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Exploit-DB / searchsploit</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -552,7 +548,7 @@
             </div>
           </a>
 
-          <a href="https://gchq.github.io/CyberChef/" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://gchq.github.io/CyberChef/" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">CyberChef</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -564,7 +560,7 @@
             </div>
           </a>
 
-          <a href="https://www.virustotal.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.virustotal.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">VirusTotal</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -576,7 +572,7 @@
             </div>
           </a>
 
-          <a href="https://www.shodan.io" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.shodan.io" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Shodan</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -588,7 +584,7 @@
             </div>
           </a>
 
-          <a href="https://owasp.org" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://owasp.org" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">OWASP</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -600,7 +596,7 @@
             </div>
           </a>
 
-          <a href="https://ippsec.rocks" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://ippsec.rocks" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">IppSec.rocks</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -612,7 +608,7 @@
             </div>
           </a>
 
-          <a href="https://www.revshells.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.revshells.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">RevShells.com</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -634,7 +630,7 @@
         <h2 class="section-heading"><span>05 //</span> YouTube Channels Worth Following</h2>
         <div class="res-grid">
 
-          <a href="https://www.youtube.com/@_JohnHammond" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.youtube.com/@_JohnHammond" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">John Hammond</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -646,7 +642,7 @@
             </div>
           </a>
 
-          <a href="https://www.youtube.com/@ippsec" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.youtube.com/@ippsec" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">IppSec</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -658,7 +654,7 @@
             </div>
           </a>
 
-          <a href="https://www.youtube.com/@LiveOverflow" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.youtube.com/@LiveOverflow" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">LiveOverflow</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -670,7 +666,7 @@
             </div>
           </a>
 
-          <a href="https://www.youtube.com/@TCMSecurityAcademy" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.youtube.com/@TCMSecurityAcademy" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">TCM Security</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -682,7 +678,7 @@
             </div>
           </a>
 
-          <a href="https://www.youtube.com/@NetworkChuck" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.youtube.com/@NetworkChuck" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">NetworkChuck</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -694,7 +690,7 @@
             </div>
           </a>
 
-          <a href="https://www.youtube.com/@DavidBombal" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.youtube.com/@DavidBombal" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">David Bombal</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -775,7 +771,7 @@
         <h2 class="section-heading"><span>07 //</span> Communities & News</h2>
         <div class="res-grid">
 
-          <a href="https://www.reddit.com/r/netsec/" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.reddit.com/r/netsec/" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">r/netsec</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -784,7 +780,7 @@
             <div class="res-card-footer"><span class="res-tag tag-free">Free</span></div>
           </a>
 
-          <a href="https://discord.gg/tryhackme" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://discord.gg/tryhackme" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">TryHackMe Discord</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -793,7 +789,7 @@
             <div class="res-card-footer"><span class="res-tag tag-free">Free</span></div>
           </a>
 
-          <a href="https://www.darkreading.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://www.darkreading.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Dark Reading</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
@@ -802,7 +798,7 @@
             <div class="res-card-footer"><span class="res-tag tag-free">Free</span></div>
           </a>
 
-          <a href="https://krebsonsecurity.com" target="_blank" rel="noopener noreferrer" class="res-card">
+          <a href="https://krebsonsecurity.com" target="_blank" rel="noopener noreferrer" class="card res-card">
             <div class="res-card-header">
               <span class="res-card-name">Krebs on Security</span>
               <span class="res-link-arrow" aria-hidden="true">↗</span>
