@@ -83,6 +83,7 @@ cybersec-basics/
 │   ├── css/               # Global stylesheet
 │   ├── images/            # Topic images
 │   └── js/                # Client-side scripts
+│       └── topic-render.js  # Isomorphic: topic lesson-content renderer, imported by both worker.js and main.js
 ├── worker.js              # Cloudflare Worker — the only entry point: routing, API, auth, security headers
 ├── schema.sql              # D1 schema (users [incl. streak/last_active/is_public], quiz_results, quiz_rooms, quiz_room_questions, quiz_room_attempts, quiz_room_answers, room_lookup_failures)
 ├── wrangler.toml           # Cloudflare Workers configuration
@@ -218,13 +219,16 @@ repo, but equally useful for a human contributor). Highlights:
 - **Schema changes must land on remote D1 *before* the deploy that depends on
   them**, applied to both `--local` and `--remote`, or the live Worker will
   query a column that doesn't exist yet and error in production.
-- **Server-rendered content is hand-duplicated in two places on purpose** —
-  `worker.js` server-renders the homepage grid, `/start` pathway, and
-  `/topic/:id` lesson content (for crawlers / no-JS), while `public/js/main.js`
-  has the client-side equivalents. Update both when changing a
-  topic-rendering helper, or the server-rendered copy silently drifts and
-  regresses to a client-JS dependency (this caused a real Search Console Soft
-  404 once — see `c205807`).
+- **`/topic/:id` lesson content is rendered both server-side (for crawlers /
+  no-JS) and client-side**, via a single shared source of truth:
+  `public/js/topic-render.js` — a dependency-free ES module with no
+  DOM/browser APIs, imported by both `worker.js` and `public/js/main.js`.
+  This used to be two hand-kept copies (which drifted out of sync once and
+  caused a real Search Console Soft 404 — see `c205807`); if you're adding a
+  new piece of content that needs to render identically on both sides,
+  extend this module rather than writing it in only one place. Note this is
+  *why* `main.js` loads as `<script type="module">` — see CLAUDE.md's "Adding
+  a new HTML page" section if you add a page that loads it.
 - **Verify before committing**: run `npx wrangler dev` and actually exercise
   the change — this repo's pattern is driving it in headless Chrome via
   `puppeteer-core` (installed in a scratch dir, not a repo dependency). For
@@ -251,11 +255,12 @@ Things worth knowing before extending this further:
   routes should follow the existing `path.match(...)` dispatch pattern rather
   than introducing a router abstraction — consistency matters more than DRY
   here given the file's size.
-- **The `worker.js` / `main.js` render-helper duplication** (see Best
-  Practices above) is the single biggest source of "worked locally, broke in
-  a way only crawlers notice" risk in this codebase. If this grows further,
-  consider extracting the shared rendering logic into an isomorphic module
-  both sides import, rather than adding a fourth hand-kept copy.
+- **The isomorphic-module pattern used by `topic-render.js`** (see Best
+  Practices above) is the template to reach for if another piece of
+  server+client duplication shows up — a small, dependency-free ES module
+  with no DOM/browser APIs, imported by both `worker.js` (Workers natively
+  support ES module imports, no bundler config needed) and the relevant
+  `public/js/*.js` file (loaded as `type="module"`).
 - **CSP allowlist is minimal on purpose** (`connect-src 'self'`, no wildcard
   origins). Any future third-party embed/script/API call needs an explicit,
   reviewed CSP addition in `addSecurityHeaders()` — treat that as a

@@ -31,6 +31,10 @@ docs, it's gone; don't recreate it.)*
   hash/nonce/unsafe-inline), so inline scripts are blocked. Put all JS in a
   `public/js/*.js` file and load it with `<script src="/js/…">` — same-origin scripts
   are allowed automatically and need no CSP changes ever.
+- If the page needs `main.js`, load it as `<script type="module" src="/js/main.js">`
+  (not a classic script) — `main.js` imports `public/js/topic-render.js`, which needs
+  module semantics. `about.js`/`start.js` stay classic scripts; they don't import
+  anything.
 - If it should rank in search: **add its path to the sitemap** (the `paths` array in
   the `/sitemap.xml` route in `worker.js`) and give it a unique `<title>` +
   `<meta name="description">`.
@@ -49,11 +53,14 @@ from that array automatically. Two things that do NOT auto-update:
 (`homeTopicCards()` on `path === '/'`, `pathwayHtml()` on `path === '/start'`) so crawlers
 see the content without JS. `main.js`/`start.js` then enhance with per-user progress and
 leave the server-rendered cards intact if that fetch fails. Both share the `topicCard()`
-"module" component. **`/topic/:id` lesson content is also server-rendered** (`renderContent()`
-+ helpers + `getTopicSVG()` in `worker.js`) — these are hand-kept copies of the equivalent
-functions in `public/js/main.js`; update both if a topic-rendering helper changes, or topic
-pages regress to depending on client JS for content (which previously caused a real Search
-Console Soft 404).
+"module" component (worker-only — the client re-fetches via `/api/topics` rather than
+needing its own copy). **`/topic/:id` lesson content is also server-rendered**, via
+`renderContent()` + its 16 `render*` helpers + `getTopicSVG()` — these live in
+`public/js/topic-render.js`, a small dependency-free ES module with no DOM/browser API
+calls, imported by both `worker.js` (server render, for crawlers/no-JS) and
+`public/js/main.js` (client render, adds per-user progress). One source of truth — no
+more hand-syncing two copies. (This split is *why* `public/js/main.js`'s `<script>` tag
+needs `type="module"`: see the `<head>` of any `public/*.html` page.)
 
 **Public/private profiles:** `users.is_public` (default `0`, opt-in) gates `/u/:username`.
 `GET /api/user/:username` is the only place that subset is ever returned — it must stay a
