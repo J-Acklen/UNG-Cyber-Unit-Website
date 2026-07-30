@@ -43,6 +43,22 @@ function initHamburger() {
   });
 }
 
+// ─── Scroll Perf ──────────────────────────────────────────────────────────────
+
+// Card-heavy pages (resources, about) sweep dozens of :hover targets under a
+// stationary cursor during a fast scroll, retriggering their hover transitions
+// (transform/box-shadow/border-color) on every card that passes underneath —
+// visible as scroll jank. Suppressing pointer-events (and so :hover matching)
+// while a scroll is in flight avoids that without touching normal hover UX.
+function initScrollPerf() {
+  let scrollTimeout;
+  window.addEventListener('scroll', () => {
+    document.body.classList.add('is-scrolling');
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => document.body.classList.remove('is-scrolling'), 150);
+  }, { passive: true });
+}
+
 // ─── Theme Toggle ─────────────────────────────────────────────────────────────
 
 const THEME_STORAGE_KEY = 'cyberunit-theme';
@@ -3125,6 +3141,7 @@ function renderRoomResults(attempt, room, wasAlreadyAttempted) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initHamburger();
+  initScrollPerf();
   initThemeToggle();
   initSmoothScroll();
   await initAuth();

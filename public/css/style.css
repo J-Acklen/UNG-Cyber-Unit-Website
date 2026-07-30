@@ -80,6 +80,13 @@
 /* Ensure [hidden] always wins over display: flex/grid rules */
 [hidden] { display: none !important; }
 
+/* Suppress hover-triggered transitions while a scroll is in flight — see
+   initScrollPerf() in main.js. The fixed navbar/theme-toggle stay clickable
+   since they're rarely under the cursor mid-scroll and re-enable in ~150ms. */
+body.is-scrolling {
+  pointer-events: none;
+}
+
 html {
   scroll-behavior: smooth;
 }
