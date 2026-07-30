@@ -171,8 +171,10 @@ main {
   left: 0;
   right: 0;
   z-index: 100;
-  background: rgba(var(--bg-rgb), 0.95);
-  backdrop-filter: blur(8px);
+  /* Solid, not translucent+blurred: backdrop-filter on a fixed element forces
+     the browser to re-sample everything scrolling underneath it every frame,
+     which is a well-known cause of scroll jank. */
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   height: 60px;
   display: flex;
