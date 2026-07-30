@@ -24,6 +24,9 @@ import worker, {
   escapeHtml,
   renderContent,
   getTopicSVG,
+  addSecurityHeaders,
+  clientIP,
+  jsonResponse,
   dateStrUTC,
   nextStreak,
   topics,
@@ -182,6 +185,84 @@ describe('base64ImageMatchesType', () => {
     // Boundary: "RIFF"+4+"WEBP" is exactly 12 bytes; needs a 13th to pass.
     const exactly12 = btoa('RIFF\x00\x00\x00\x00WEBP');
     assert.equal(base64ImageMatchesType(exactly12, 'webp'), false);
+  });
+});
+
+// ─── addSecurityHeaders ─────────────────────────────────────────────────────────
+
+describe('addSecurityHeaders', () => {
+  test('should set the standard hardening headers', () => {
+    const h = addSecurityHeaders(new Headers());
+    assert.equal(h.get('X-Content-Type-Options'), 'nosniff');
+    assert.equal(h.get('X-Frame-Options'), 'DENY');
+    assert.equal(h.get('Referrer-Policy'), 'strict-origin-when-cross-origin');
+    assert.match(h.get('Strict-Transport-Security'), /max-age=\d+/);
+    assert.equal(h.get('Cross-Origin-Resource-Policy'), 'same-origin');
+  });
+
+  test('should set a CSP with no unsafe-inline/unsafe-eval in script-src', () => {
+    // The whole "never write inline <script>" convention (see CLAUDE.md) is
+    // only actually enforced by this header — a regression here would
+    // silently reopen inline-script XSS without any other test noticing,
+    // since routes would still render fine either way.
+    const csp = addSecurityHeaders(new Headers()).get('Content-Security-Policy');
+    const scriptSrc = csp.split(';').find(d => d.trim().startsWith('script-src'));
+    assert.ok(scriptSrc, 'script-src directive present');
+    assert.doesNotMatch(scriptSrc, /unsafe-inline|unsafe-eval|\*/);
+  });
+
+  test('should deny embedding via frame-ancestors', () => {
+    const csp = addSecurityHeaders(new Headers()).get('Content-Security-Policy');
+    assert.match(csp, /frame-ancestors 'none'/);
+  });
+
+  test('should mutate and return the same Headers instance it was given', () => {
+    const input = new Headers();
+    const output = addSecurityHeaders(input);
+    assert.equal(output, input);
+  });
+});
+
+// ─── clientIP ───────────────────────────────────────────────────────────────────
+
+describe('clientIP', () => {
+  test('should prefer CF-Connecting-IP (Cloudflare-set, not spoofable) over X-Forwarded-For', () => {
+    const req = new Request('https://x.test/', {
+      headers: { 'CF-Connecting-IP': '1.2.3.4', 'X-Forwarded-For': '9.9.9.9' },
+    });
+    assert.equal(clientIP(req), '1.2.3.4');
+  });
+
+  test('should fall back to the first hop of X-Forwarded-For', () => {
+    const req = new Request('https://x.test/', { headers: { 'X-Forwarded-For': '5.6.7.8, 9.9.9.9' } });
+    assert.equal(clientIP(req), '5.6.7.8');
+  });
+
+  test('should return "unknown" when neither header is present', () => {
+    assert.equal(clientIP(new Request('https://x.test/')), 'unknown');
+  });
+});
+
+// ─── jsonResponse ───────────────────────────────────────────────────────────────
+
+describe('jsonResponse', () => {
+  test('should set JSON content-type and default to 200', async () => {
+    const res = jsonResponse({ ok: true });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('Content-Type'), 'application/json');
+    assert.deepEqual(await res.json(), { ok: true });
+  });
+
+  test('should honor a custom status and always include security headers', () => {
+    const res = jsonResponse({ error: 'nope' }, 403);
+    assert.equal(res.status, 403);
+    assert.equal(res.headers.get('X-Frame-Options'), 'DENY');
+  });
+
+  test('should apply extra headers without dropping the security ones', () => {
+    const res = jsonResponse({}, 200, { 'X-Custom': 'yes' });
+    assert.equal(res.headers.get('X-Custom'), 'yes');
+    assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
   });
 });
 
