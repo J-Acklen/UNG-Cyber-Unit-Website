@@ -1065,6 +1065,7 @@ function notFoundResponse() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>404 — CyberUnit @ UNG</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <script src="/js/theme-init.js"></script>
   <link rel="stylesheet" href="/css/style.css">
   <style>
     .page-body { padding-top: 0; }
@@ -1084,14 +1085,14 @@ function notFoundResponse() {
       color: var(--accent);
       line-height: 1;
       font-family: 'Share Tech Mono', monospace;
-      text-shadow: 0 0 40px rgba(0,255,136,0.6), 0 0 12px rgba(0,255,136,0.4);
+      text-shadow: 0 0 40px rgba(var(--accent-rgb),0.6), 0 0 12px rgba(var(--accent-rgb),0.4);
     }
     .not-found-msg {
       color: var(--accent);
       margin: 1.25rem 0 2rem;
       font-size: clamp(1rem, 2.5vw, 1.3rem);
       font-family: 'Share Tech Mono', monospace;
-      text-shadow: 0 0 16px rgba(0,255,136,0.4);
+      text-shadow: 0 0 16px rgba(var(--accent-rgb),0.4);
     }
     .secret { color: var(--bg); font-size: 0.4rem; text-decoration: none; margin-left: 0.2rem; }
     .secret:hover { color: var(--bg); }
