@@ -1,8 +1,14 @@
 # CyberUnit @ UNG — working notes
 
-Interactive cybersecurity education site on **Cloudflare Workers + D1**. Canonical
-entry point is **`worker.js`** (routing, API, auth, security headers, per-page SEO
-injection). `server.js` is a legacy Express prototype — not deployed, ignore it.
+Interactive cybersecurity education site on **Cloudflare Workers + D1**. The
+only entry point is **`worker.js`** (routing, API, auth, security headers,
+per-page SEO injection). There is no bundler/build step — `npx wrangler dev`
+runs `worker.js` directly against `./public`.
+
+*(An earlier `server.js` Express prototype — static topic pages only, no
+auth/D1/Quiz Rooms — was removed on 2026-07-30 once it no longer reflected
+the app in any meaningful way. If you see references to it in old commits or
+docs, it's gone; don't recreate it.)*
 
 ## Deployment
 - **Pushing to `main` auto-deploys** via GitHub Actions (`wrangler deploy`). There is

@@ -31,7 +31,6 @@ ungcyberunit_security_remediation.md
 # Build output (if added later)
 dist/
 build/
-server.js
 node_modules/
 package.json
 package-lock.json

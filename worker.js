@@ -1,5 +1,4 @@
 // ─── Topics Data ─────────────────────────────────────────────────────────────
-// (copied verbatim from server.js — no changes needed)
 
 const topics = [
   {

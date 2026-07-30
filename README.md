@@ -83,14 +83,19 @@ cybersec-basics/
 │   ├── css/               # Global stylesheet
 │   ├── images/            # Topic images
 │   └── js/                # Client-side scripts
-├── worker.js              # Cloudflare Worker — canonical entry point: routing, API, auth, security headers
-├── server.js               # Legacy Express prototype — static topic pages only, no auth/DB/Quiz Rooms; not deployed, kept for optional local preview
+├── worker.js              # Cloudflare Worker — the only entry point: routing, API, auth, security headers
 ├── schema.sql              # D1 schema (users [incl. streak/last_active/is_public], quiz_results, quiz_rooms, quiz_room_questions, quiz_room_attempts, quiz_room_answers, room_lookup_failures)
 ├── wrangler.toml           # Cloudflare Workers configuration
 └── package.json
 ```
 
-> **Note on `server.js`:** this was the original Express-based prototype and predates the account system, D1 database, and Quiz Rooms feature. It is **not used in production** — `wrangler deploy` runs `worker.js` exclusively. It's kept around only as a lightweight way to preview the static topic pages with `npm start`/`npm run dev`, and does not reflect current functionality (no login, progress tracking, admin/instructor panels, or Quiz Rooms).
+> **Note:** an earlier `server.js` (an Express prototype predating the account
+> system, D1 database, and Quiz Rooms) was removed on 2026-07-30, along with
+> its `express`/`nodemon` dependencies. It was never deployed — `worker.js`
+> has been the sole entry point since the Cloudflare Workers migration — and
+> had drifted far enough from current functionality (no login, progress
+> tracking, admin/instructor panels, or Quiz Rooms) that keeping it around as
+> a "preview" was actively misleading. `npm start` now runs `wrangler dev`.
 
 ---
 
@@ -151,21 +156,13 @@ cybersec-basics/
 npm install
 ```
 
-### Run locally (full app — recommended)
+### Run locally
 
 ```bash
-npx wrangler dev
+npm start        # or: npx wrangler dev
 ```
 
 The site will be available at `http://localhost:8787`, backed by D1 and the full auth/Quiz Rooms feature set.
-
-### Run locally (static preview only, via `server.js`)
-
-```bash
-npm start        # or: npm run dev (nodemon, auto-reload)
-```
-
-Serves only the static topic pages on Express — no auth, no database, no Quiz Rooms. Useful for a quick content-only preview without Wrangler.
 
 ---
 
@@ -248,10 +245,6 @@ repo, but equally useful for a human contributor). Highlights:
 
 Things worth knowing before extending this further:
 
-- **`server.js` is legacy and unused in production** — it predates accounts,
-  D1, and Quiz Rooms, and is kept only for a static-content-only local
-  preview (`npm start`). It's a reasonable candidate for deletion once no one
-  relies on that preview path; don't add features to it.
 - **`worker.js` is a single ~180KB file** — routing, API handlers, auth,
   security headers, and SEO/HTML rendering all live in it. There's no build
   step, so this is deliberate (simpler deploy, no bundler), but it means new
