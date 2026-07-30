@@ -11,7 +11,7 @@ import { renderContent, getTopicSVG } from './topic-render.js';
 
 let currentUser = null; // { username, role, avatar } or null
 
-const DEFAULT_AVATAR = '/images/CyberUnitLogo_Transparent.png';
+const DEFAULT_AVATAR = '/images/CyberUnitLogo_Transparent.compressed.png';
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 

@@ -1102,7 +1102,7 @@ function notFoundResponse() {
 
   <nav class="navbar" role="navigation" aria-label="Main navigation">
     <div class="container">
-      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.compressed.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
       <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
@@ -1140,7 +1140,7 @@ function topicMetaTags(topic) {
   const title = escapeHtml(`${topic.title} — UNG Cyber Unit`);
   const desc = escapeHtml(`${topic.shortDesc} A beginner cybersecurity lesson from the UNG Cyber Unit.`);
   const canonical = `https://ungcyberunit.org/topic/${topic.id}`;
-  const image = 'https://ungcyberunit.org/images/CyberUnitLogo_Transparent.png';
+  const image = 'https://ungcyberunit.org/images/CyberUnitLogo_Transparent.compressed.png';
   // BreadcrumbList so search engines show Home › Core Topics › <topic> and can
   // build sitelinks. `<` escaping prevents any "</script>" breakout.
   const breadcrumb = JSON.stringify({
