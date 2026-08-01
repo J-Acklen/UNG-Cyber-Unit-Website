@@ -776,12 +776,16 @@ function closeAuthModal() {
   const modal = document.getElementById('authModal');
   if (!modal) return;
   modal.hidden = true;
-  ['loginError', 'registerError'].forEach(id => {
+  ['loginError', 'registerError', 'forgotStatus'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.hidden = true; el.textContent = ''; }
   });
+  document.getElementById('loginForgotLinks')?.setAttribute('hidden', '');
 }
 
+// 'forgot' isn't a persistent .modal-tab (no tab button carries data-tab
+//="forgot") — it's only reachable via the "Forgot ...?" links shown after a
+// failed login, or the "Back to Sign In" link from within that view.
 function setAuthTab(tab) {
   document.querySelectorAll('.modal-tab').forEach(t => {
     const active = t.dataset.tab === tab;
@@ -790,8 +794,12 @@ function setAuthTab(tab) {
   });
   const loginForm    = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
+  const forgotForm   = document.getElementById('forgotForm');
+  const guestSection = document.getElementById('authModalGuestSection');
   if (loginForm)    loginForm.hidden    = (tab !== 'login');
   if (registerForm) registerForm.hidden = (tab !== 'register');
+  if (forgotForm)    forgotForm.hidden    = (tab !== 'forgot');
+  if (guestSection)  guestSection.hidden  = (tab === 'forgot');
 }
 
 function injectAuthModal() {
@@ -819,6 +827,11 @@ function injectAuthModal() {
           <input type="password" id="loginPassword" autocomplete="current-password" required>
         </div>
         <p class="form-error" id="loginError" aria-live="polite" hidden></p>
+        <p class="modal-forgot-links" id="loginForgotLinks" hidden>
+          <button type="button" class="link-btn" id="forgotPasswordLink">Forgot password?</button>
+          &nbsp;·&nbsp;
+          <button type="button" class="link-btn" id="forgotUsernameLink">Forgot username?</button>
+        </p>
         <button type="submit" class="btn" style="width:100%;margin-top:0.25rem">Sign In</button>
       </form>
       <form id="registerForm" class="modal-form" novalidate hidden>
@@ -837,8 +850,20 @@ function injectAuthModal() {
         <p class="form-error" id="registerError" aria-live="polite" hidden></p>
         <button type="submit" class="btn" style="width:100%;margin-top:0.25rem">Create Account</button>
       </form>
-      <div class="modal-divider"><span>or</span></div>
-      <button type="button" class="btn" id="guestLoginBtn" style="width:100%">Continue as Guest</button>
+      <div id="forgotForm" class="modal-form" hidden>
+        <div class="form-group">
+          <label for="forgotEmail">Your verified email</label>
+          <input type="email" id="forgotEmail" autocomplete="email" required>
+        </div>
+        <p class="form-error" id="forgotStatus" aria-live="polite" hidden></p>
+        <button type="button" class="btn" id="forgotUsernameSubmit" style="width:100%;margin-top:0.25rem">Email My Username</button>
+        <button type="button" class="btn" id="forgotPasswordSubmit" style="width:100%;margin-top:0.5rem">Email a Reset Link</button>
+        <button type="button" class="link-btn" id="forgotBackLink" style="margin-top:0.75rem">← Back to Sign In</button>
+      </div>
+      <div id="authModalGuestSection">
+        <div class="modal-divider"><span>or</span></div>
+        <button type="button" class="btn" id="guestLoginBtn" style="width:100%">Continue as Guest</button>
+      </div>
     </div>`;
   document.body.appendChild(modal);
 
@@ -851,6 +876,20 @@ function injectAuthModal() {
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
   document.getElementById('registerForm').addEventListener('submit', handleRegister);
   document.getElementById('guestLoginBtn').addEventListener('click', handleGuestLogin);
+
+  document.getElementById('forgotPasswordLink').addEventListener('click', () => openForgotView());
+  document.getElementById('forgotUsernameLink').addEventListener('click', () => openForgotView());
+  document.getElementById('forgotBackLink').addEventListener('click', () => setAuthTab('login'));
+  document.getElementById('forgotUsernameSubmit').addEventListener('click', handleForgotUsername);
+  document.getElementById('forgotPasswordSubmit').addEventListener('click', handleForgotPassword);
+}
+
+function openForgotView() {
+  setAuthTab('forgot');
+  const emailInput = document.getElementById('forgotEmail');
+  const loginEmailish = document.getElementById('loginUsername')?.value.trim();
+  if (emailInput && loginEmailish && loginEmailish.includes('@')) emailInput.value = loginEmailish;
+  emailInput?.focus();
 }
 
 async function handleLogin(e) {
@@ -858,6 +897,7 @@ async function handleLogin(e) {
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value;
   const errEl    = document.getElementById('loginError');
+  const forgotLinks = document.getElementById('loginForgotLinks');
   errEl.hidden   = true;
   try {
     const res  = await fetch('/api/auth/login', {
@@ -866,7 +906,12 @@ async function handleLogin(e) {
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Login failed.'; errEl.hidden = false; return; }
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Login failed.';
+      errEl.hidden = false;
+      if (forgotLinks) forgotLinks.hidden = false;
+      return;
+    }
     currentUser = data;
     closeAuthModal();
     updateAuthNav();
@@ -875,6 +920,44 @@ async function handleLogin(e) {
     errEl.textContent = 'Network error. Please try again.';
     errEl.hidden = false;
   }
+}
+
+// Server always responds { ok: true } for a validly-shaped email regardless
+// of whether it matched an account (anti-enumeration — same principle as
+// login's generic "Invalid username or password"), so both handlers show one
+// generic message on success rather than anything account-specific.
+async function submitForgotAction(endpoint, successMessage) {
+  const email  = document.getElementById('forgotEmail').value.trim();
+  const status = document.getElementById('forgotStatus');
+  status.style.color = '';
+  status.hidden = true;
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      status.textContent = data.error || 'Something went wrong. Please try again.';
+      status.hidden = false;
+      return;
+    }
+    status.style.color = 'var(--accent)';
+    status.textContent = successMessage;
+    status.hidden = false;
+  } catch {
+    status.textContent = 'Network error. Please try again.';
+    status.hidden = false;
+  }
+}
+
+function handleForgotUsername() {
+  submitForgotAction('/api/auth/forgot-username', 'If that email is on file, we’ve sent a reminder — check your inbox.');
+}
+
+function handleForgotPassword() {
+  submitForgotAction('/api/auth/forgot-password', 'If that email is on file, we’ve sent a reset link — check your inbox.');
 }
 
 async function handleRegister(e) {
@@ -2098,8 +2181,8 @@ async function initStudentHubPage() {
   if (!isStudentPlus()) {
     if (gateMsg) {
       gateMsg.textContent = (!currentUser || currentUser.role === 'guest')
-        ? 'Sign in with a member account, then verify your .edu email on your Profile to unlock this.'
-        : 'Verified students only — verify your .edu email on your Profile to unlock this.';
+        ? 'Sign in with a member account to unlock this — the student role is assigned by an admin.'
+        : 'Verified students only — this role is assigned by an admin. Reach out if you think you should have access.';
     }
     if (gate) gate.hidden = false;
     document.getElementById('loginGateBtn')?.addEventListener('click', () => {
@@ -2281,24 +2364,24 @@ async function loadProfileAccount() {
     wireVisibilityToggle(profile.username);
     renderProfileRoomHistory(profile.roomAttempts ?? []);
     renderProfileBadges(profile.badges ?? []);
-    renderStudentVerification(profile);
+    renderEmailVerification(profile);
   } catch {
     accountWrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load account info.</p>`;
     if (historyWrap) historyWrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load quiz room history.</p>`;
   }
 }
 
-// ─── Student Verification ───────────────────────────────────────────────────
+// ─── Email Verification ─────────────────────────────────────────────────────
 
-function renderStudentVerification(profile) {
-  const wrap = document.getElementById('studentVerifyWrap');
+function renderEmailVerification(profile) {
+  const wrap = document.getElementById('emailVerifyWrap');
   if (!wrap) return;
 
   const params = new URLSearchParams(window.location.search);
-  const banner = document.getElementById('studentVerifyBanner');
+  const banner = document.getElementById('emailVerifyBanner');
   if (banner && !banner.dataset.shown) {
     if (params.get('verified') === '1') {
-      banner.textContent = '✅ Your student email is verified!';
+      banner.textContent = '✅ Your email is verified!';
       banner.style.color = 'var(--accent)';
       banner.hidden = false;
       banner.dataset.shown = '1';
@@ -2306,45 +2389,50 @@ function renderStudentVerification(profile) {
       banner.textContent = 'That verification link is invalid or has expired. Please request a new one below.';
       banner.hidden = false;
       banner.dataset.shown = '1';
+    } else if (params.get('reset') === '1') {
+      banner.textContent = '✅ Your password has been reset.';
+      banner.style.color = 'var(--accent)';
+      banner.hidden = false;
+      banner.dataset.shown = '1';
     }
   }
 
   if (profile.email) {
     wrap.innerHTML = `
-      <p>🎓 <strong>Verified Student</strong>${profile.isUngStudent ? ' &nbsp; 🦅 <strong>UNG Student</strong>' : ''}</p>
-      <p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;font-size:0.85rem;">Verified email: ${escHtml(profile.email)}</p>`;
+      <p>✓ <strong>Email verified</strong></p>
+      <p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;font-size:0.85rem;">${escHtml(profile.email)}</p>`;
     return;
   }
 
   if (profile.emailPending) {
     wrap.innerHTML = `
       <p>Verification email sent to <strong>${escHtml(profile.emailPending)}</strong> — check your inbox.</p>
-      <p class="form-error" id="studentVerifyError" hidden></p>
-      <button type="button" class="btn btn-sm" id="studentVerifyResendBtn">Resend</button>`;
-    document.getElementById('studentVerifyResendBtn')?.addEventListener('click', () => submitStudentVerify(profile.emailPending));
+      <p class="form-error" id="emailVerifyError" hidden></p>
+      <button type="button" class="btn btn-sm" id="emailVerifyResendBtn">Resend</button>`;
+    document.getElementById('emailVerifyResendBtn')?.addEventListener('click', () => submitEmailVerify(profile.emailPending));
     return;
   }
 
   wrap.innerHTML = `
-    <form id="studentVerifyForm" class="announcement-form">
-      <p class="form-error" id="studentVerifyError" hidden></p>
+    <form id="emailVerifyForm" class="announcement-form">
+      <p class="form-error" id="emailVerifyError" hidden></p>
       <div class="form-group">
-        <label for="studentVerifyEmail">Your .edu email</label>
-        <input type="email" id="studentVerifyEmail" placeholder="you@ung.edu" required>
+        <label for="emailVerifyEmail">Your email</label>
+        <input type="email" id="emailVerifyEmail" placeholder="you@example.com" required>
       </div>
       <div class="announcement-form-actions">
-        <button type="submit" class="btn btn-primary" id="studentVerifySubmit">Send Verification Email</button>
+        <button type="submit" class="btn btn-primary" id="emailVerifySubmit">Send Verification Email</button>
       </div>
     </form>`;
-  document.getElementById('studentVerifyForm')?.addEventListener('submit', (e) => {
+  document.getElementById('emailVerifyForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    submitStudentVerify(document.getElementById('studentVerifyEmail').value.trim());
+    submitEmailVerify(document.getElementById('emailVerifyEmail').value.trim());
   });
 }
 
-async function submitStudentVerify(email) {
-  const errEl = document.getElementById('studentVerifyError');
-  const btn = document.getElementById('studentVerifySubmit') || document.getElementById('studentVerifyResendBtn');
+async function submitEmailVerify(email) {
+  const errEl = document.getElementById('emailVerifyError');
+  const btn = document.getElementById('emailVerifySubmit') || document.getElementById('emailVerifyResendBtn');
   if (errEl) errEl.hidden = true;
   if (btn) btn.disabled = true;
   try {

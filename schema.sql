@@ -14,10 +14,15 @@ CREATE TABLE IF NOT EXISTS users (
   email_verify_token_hash   TEXT,
   email_verify_expires_at   INTEGER,
   email_verify_last_sent_at INTEGER,
-  is_ung_student            INTEGER NOT NULL DEFAULT 0
+  is_ung_student            INTEGER NOT NULL DEFAULT 0,
+  password_reset_token_hash   TEXT,
+  password_reset_expires_at   INTEGER,
+  password_reset_last_sent_at INTEGER
 );
 
--- Verified student email must uniquely identify one account.
+-- Verified email must uniquely identify one account (not currently tied to
+-- any role — see CLAUDE.md; is_ung_student above is dormant, reserved for a
+-- future feature, not referenced by any code).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS quiz_results (
@@ -110,3 +115,13 @@ CREATE TABLE IF NOT EXISTS feedback_rate_limit (
   ts INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_frl_ip_ts ON feedback_rate_limit (ip, ts);
+
+-- Sliding-window rate limit for the unauthenticated forgot-password/
+-- forgot-username endpoints (verify-email/request stays authenticated and
+-- uses its own per-account cooldown instead — see worker.js).
+CREATE TABLE IF NOT EXISTS email_action_rate_limit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT    NOT NULL,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_earl_ip_ts ON email_action_rate_limit (ip, ts);

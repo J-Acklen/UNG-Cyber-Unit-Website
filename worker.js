@@ -1134,6 +1134,47 @@ function notFoundResponse() {
   return new Response(html, { status: 404, headers });
 }
 
+// ─── Auth action pages (email confirm / password reset) ───────────────────────
+// Minimal server-rendered pages for links clicked directly out of an email —
+// no JS, so a plain <form method="POST"> is the actual state-changing step.
+// This is deliberate: mail security gateways commonly pre-fetch every link in
+// an inbound email automatically, before a human opens it. A GET here must
+// never mutate anything, or an automated crawler silently burns the user's
+// token before they ever see the message. Only the POST (triggered by an
+// explicit click) is allowed to change state.
+function authActionPageResponse({ title, heading, message, formHtml }, status = 200) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>${title} — CyberUnit @ UNG</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <ul class="navbar-links"><li><a href="/">Home</a></li></ul>
+    </div>
+  </nav>
+  <main class="page-body">
+    <div class="container" style="max-width: 480px; padding: 3rem 1rem;">
+      <div class="card" style="padding: 2rem;">
+        <h1 style="font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1.3rem;margin:0 0 0.75rem;">${heading}</h1>
+        <p style="color:var(--text-soft);margin:0 0 1.25rem;">${message}</p>
+        ${formHtml}
+      </div>
+    </div>
+  </main>
+</body>
+</html>`;
+  const headers = addSecurityHeaders(new Headers({ 'Content-Type': 'text/html; charset=utf-8' }));
+  return new Response(html, { status, headers });
+}
+
 // Per-topic <head> tags so each /topic/:id is its own indexable page rather
 // than sharing the generic topic.html metadata. Injected at serve time.
 function topicMetaTags(topic) {
@@ -1491,6 +1532,32 @@ async function recordFeedbackSubmission(env, request) {
   await env.DB.prepare('DELETE FROM feedback_rate_limit WHERE ts < ?').bind(now - FEEDBACK_RL_WINDOW_MS).run();
 }
 
+const EMAIL_ACTION_RL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const EMAIL_ACTION_RL_MAX = 5;                    // forgot-password/-username requests per IP per window
+
+// Shared IP limiter for the unauthenticated recovery endpoints (forgot
+// password/username) — these have no account to rate-limit against until
+// after a lookup, unlike verify-email/request which is behind a login.
+async function checkEmailActionLimit(env, request) {
+  if (!env.DB) return null;
+  const cutoff = Date.now() - EMAIL_ACTION_RL_WINDOW_MS;
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM email_action_rate_limit WHERE ip = ? AND ts > ?'
+  ).bind(clientIP(request), cutoff).first();
+  if ((row?.n ?? 0) >= EMAIL_ACTION_RL_MAX) {
+    return jsonResponse({ error: 'Too many requests. Please wait a while and try again.' }, 429);
+  }
+  return null;
+}
+
+async function recordEmailAction(env, request) {
+  if (!env.DB) return;
+  const now = Date.now();
+  await env.DB.prepare('INSERT INTO email_action_rate_limit (ip, ts) VALUES (?, ?)')
+    .bind(clientIP(request), now).run();
+  await env.DB.prepare('DELETE FROM email_action_rate_limit WHERE ts < ?').bind(now - EMAIL_ACTION_RL_WINDOW_MS).run();
+}
+
 // Uniform response for any code that can't be joined (unknown, closed, or
 // expired) so responses can't be used to probe which private rooms exist.
 function roomUnavailable() {
@@ -1725,14 +1792,12 @@ export default {
         const session = await getSession(request, env.JWT_SECRET);
         if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
         let avatar = null;
-        let isUngStudent = false;
         let hasUnreadAnnouncements = false;
         let role = session.role ?? 'member';
         let extraHeaders = {};
         if (env.DB) {
-          const row = await env.DB.prepare('SELECT avatar, last_seen_announcements, role, is_ung_student FROM users WHERE id = ?').bind(session.sub).first();
+          const row = await env.DB.prepare('SELECT avatar, last_seen_announcements, role FROM users WHERE id = ?').bind(session.sub).first();
           avatar = row?.avatar ?? null;
-          isUngStudent = !!row?.is_ung_student;
           const refreshed = await refreshRoleIfStale(env, session, row?.role);
           role = refreshed.role;
           if (refreshed.cookie) extraHeaders = { 'Set-Cookie': refreshed.cookie };
@@ -1742,12 +1807,14 @@ export default {
             hasUnreadAnnouncements = !!latest?.latest && (row?.last_seen_announcements ?? 0) < latest.latest;
           }
         }
-        return jsonResponse({ id: session.sub, username: session.username, role, avatar, isUngStudent, hasUnreadAnnouncements }, 200, extraHeaders);
+        return jsonResponse({ id: session.sub, username: session.username, role, avatar, hasUnreadAnnouncements }, 200, extraHeaders);
       }
 
       // POST /api/auth/verify-email/request — any signed-in non-guest member
-      // can claim a .edu address; verifying it promotes 'member' to 'student'
-      // (see the confirm handler below) and flags @ung.edu specifically.
+      // can confirm any email address on their account. Confirming does NOT
+      // grant any role by itself — 'student' (and any future role) is
+      // admin-assigned only (PATCH /api/admin/users/:id). This is purely an
+      // identity/recovery marker, also used by forgot-password/-username below.
       if (path === '/api/auth/verify-email/request' && request.method === 'POST') {
         if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
         const session = await requireRole(request, env, 'member');
@@ -1756,14 +1823,14 @@ export default {
         let body;
         try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
         const email = (body?.email ?? '').toString().trim().toLowerCase();
-        if (!email || email.length > 254 || !/^[^\s@]+@([a-zA-Z0-9-]+\.)+edu$/i.test(email)) {
-          return jsonResponse({ error: 'Please enter a valid .edu email address' }, 400);
+        if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return jsonResponse({ error: 'Please enter a valid email address' }, 400);
         }
 
         const user = await env.DB.prepare(
           'SELECT email, email_verify_last_sent_at FROM users WHERE id = ?'
         ).bind(session.sub).first();
-        if (user?.email) return jsonResponse({ error: 'This account already has a verified student email' }, 409);
+        if (user?.email) return jsonResponse({ error: 'This account already has a verified email' }, 409);
 
         const takenByOther = await env.DB.prepare('SELECT id FROM users WHERE email = ? AND id != ?').bind(email, session.sub).first();
         if (takenByOther) return jsonResponse({ error: 'This email is already verified on another account' }, 409);
@@ -1787,9 +1854,9 @@ export default {
           try {
             await sendResendEmail(env, {
               to: email,
-              subject: 'Verify your student email — CyberUnit @ UNG',
-              text: `Confirm your student email by opening this link (expires in 1 hour):\n\n${confirmUrl}\n\nIf you didn't request this, you can ignore this email.`,
-              html: `<p>Confirm your student email by clicking the link below (expires in 1 hour):</p><p><a href="${confirmUrl}">${confirmUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+              subject: 'Confirm your email — CyberUnit @ UNG',
+              text: `Confirm this email address by opening this link (expires in 1 hour):\n\n${confirmUrl}\n\nIf you didn't request this, you can ignore this email.`,
+              html: `<p>Confirm this email address by clicking the link below (expires in 1 hour):</p><p><a href="${confirmUrl}">${confirmUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
             });
           } catch (err) {
             console.error('verify-email send failed', err.message);
@@ -1802,8 +1869,9 @@ export default {
 
       // GET /api/auth/verify-email/confirm — clicked directly from the emailed
       // link, so it can't require the requesting browser's own session; the
-      // high-entropy token itself is the credential (same trust model as a
-      // password-reset link).
+      // high-entropy token itself is the credential. Renders a confirm page
+      // only — does NOT mutate (see the authActionPageResponse comment for
+      // why). The actual confirmation happens on the POST below.
       if (path === '/api/auth/verify-email/confirm' && request.method === 'GET') {
         if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
         const token = url.searchParams.get('token') ?? '';
@@ -1814,16 +1882,220 @@ export default {
 
         if (!match) return Response.redirect(`${url.origin}/profile?verify_error=1`, 302);
 
-        const isUngStudent = /@ung\.edu$/i.test(match.email_pending) ? 1 : 0;
+        return authActionPageResponse({
+          title: 'Confirm Email',
+          heading: '// Confirm Your Email',
+          message: `Click below to confirm <strong>${escapeHtml(match.email_pending)}</strong> for your account.`,
+          formHtml: `<form method="POST" action="/api/auth/verify-email/confirm">
+            <input type="hidden" name="token" value="${escapeHtml(token)}">
+            <button type="submit" class="btn btn-primary">Confirm Email</button>
+          </form>`,
+        });
+      }
+
+      // POST /api/auth/verify-email/confirm — the actual mutation, only
+      // reachable by submitting the form from the GET page above (a real
+      // user click), never by an automated link-prefetcher (GET-only).
+      if (path === '/api/auth/verify-email/confirm' && request.method === 'POST') {
+        if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+        let form;
+        try { form = await request.formData(); } catch { return Response.redirect(`${url.origin}/profile?verify_error=1`, 302); }
+        const token = (form.get('token') ?? '').toString();
+        const tokenHash = token ? await sha256Hex(token) : '';
+        const match = tokenHash && await env.DB.prepare(
+          'SELECT id FROM users WHERE email_verify_token_hash = ? AND email_verify_expires_at > ?'
+        ).bind(tokenHash, Date.now()).first();
+
+        if (!match) return Response.redirect(`${url.origin}/profile?verify_error=1`, 302);
+
         await env.DB.prepare(`
           UPDATE users
-          SET email = email_pending, email_pending = NULL, email_verify_token_hash = NULL,
-              email_verify_expires_at = NULL, is_ung_student = ?,
-              role = CASE WHEN role = 'member' THEN 'student' ELSE role END
+          SET email = email_pending, email_pending = NULL, email_verify_token_hash = NULL, email_verify_expires_at = NULL
           WHERE id = ?
-        `).bind(isUngStudent, match.id).run();
+        `).bind(match.id).run();
 
         return Response.redirect(`${url.origin}/profile?verified=1`, 302);
+      }
+
+      // POST /api/auth/forgot-password — unauthenticated (that's the whole
+      // point). Always responds { ok: true } regardless of whether the email
+      // matched an account, same anti-enumeration principle as login's
+      // generic "Invalid username or password". Only works for accounts with
+      // a confirmed email on file — there's no other way to prove identity.
+      if (path === '/api/auth/forgot-password' && request.method === 'POST') {
+        if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+        const limited = await checkEmailActionLimit(env, request);
+        if (limited) return limited;
+        await recordEmailAction(env, request);
+
+        let body;
+        try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
+        const email = (body?.email ?? '').toString().trim().toLowerCase();
+        if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return jsonResponse({ error: 'Please enter a valid email address' }, 400);
+        }
+
+        const user = await env.DB.prepare(
+          'SELECT id, password_reset_last_sent_at FROM users WHERE email = ?'
+        ).bind(email).first();
+        const cooldownMs = 2 * 60 * 1000;
+        const inCooldown = user?.password_reset_last_sent_at && Date.now() - user.password_reset_last_sent_at < cooldownMs;
+
+        if (user && !inCooldown) {
+          const token = randomTokenHex();
+          const tokenHash = await sha256Hex(token);
+          const now = Date.now();
+          await env.DB.prepare(`
+            UPDATE users
+            SET password_reset_token_hash = ?, password_reset_expires_at = ?, password_reset_last_sent_at = ?
+            WHERE id = ?
+          `).bind(tokenHash, now + 60 * 60 * 1000, now, user.id).run();
+
+          if (env.RESEND_API_KEY) {
+            const resetUrl = `${url.origin}/api/auth/reset-password?token=${token}`;
+            try {
+              await sendResendEmail(env, {
+                to: email,
+                subject: 'Reset your password — CyberUnit @ UNG',
+                text: `Reset your password by opening this link (expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, you can ignore this email.`,
+                html: `<p>Reset your password by clicking the link below (expires in 1 hour):</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+              });
+            } catch (err) {
+              console.error('forgot-password send failed', err.message);
+              // Still return ok:true below — a distinguishable error here
+              // would leak whether the account exists.
+            }
+          }
+        }
+
+        return jsonResponse({ ok: true });
+      }
+
+      function resetPasswordFormHtml(token) {
+        return `<form method="POST" action="/api/auth/reset-password">
+          <input type="hidden" name="token" value="${escapeHtml(token)}">
+          <div class="form-group">
+            <label for="password">New password</label>
+            <input type="password" id="password" name="password" minlength="8" maxlength="128" required autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="passwordConfirm">Confirm password</label>
+            <input type="password" id="passwordConfirm" name="passwordConfirm" minlength="8" maxlength="128" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary">Reset Password</button>
+        </form>`;
+      }
+
+      const resetLinkInvalidPage = () => authActionPageResponse({
+        title: 'Reset Link Invalid',
+        heading: '// Link Expired or Invalid',
+        message: 'This password reset link is invalid or has expired. Request a new one from the Sign In screen.',
+        formHtml: `<a href="/" class="btn">← Return to Home</a>`,
+      }, 400);
+
+      // GET /api/auth/reset-password — same no-mutation-on-GET discipline as
+      // verify-email/confirm, though setting a password requires a form
+      // either way, so this route was never at risk of link-prefetch abuse.
+      if (path === '/api/auth/reset-password' && request.method === 'GET') {
+        if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+        const token = url.searchParams.get('token') ?? '';
+        const tokenHash = token ? await sha256Hex(token) : '';
+        const match = tokenHash && await env.DB.prepare(
+          'SELECT id FROM users WHERE password_reset_token_hash = ? AND password_reset_expires_at > ?'
+        ).bind(tokenHash, Date.now()).first();
+
+        if (!match) return resetLinkInvalidPage();
+
+        return authActionPageResponse({
+          title: 'Reset Password',
+          heading: '// Set a New Password',
+          message: 'Choose a new password for your account.',
+          formHtml: resetPasswordFormHtml(token),
+        });
+      }
+
+      // POST /api/auth/reset-password — the actual mutation, then auto-login
+      // (same signJWT/sessionCookie pattern as register/login) for good UX.
+      if (path === '/api/auth/reset-password' && request.method === 'POST') {
+        if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+        let form;
+        try { form = await request.formData(); } catch { return resetLinkInvalidPage(); }
+        const token = (form.get('token') ?? '').toString();
+        const password = (form.get('password') ?? '').toString();
+        const passwordConfirm = (form.get('passwordConfirm') ?? '').toString();
+
+        const tokenHash = token ? await sha256Hex(token) : '';
+        const match = tokenHash && await env.DB.prepare(
+          'SELECT id, username, role FROM users WHERE password_reset_token_hash = ? AND password_reset_expires_at > ?'
+        ).bind(tokenHash, Date.now()).first();
+        if (!match) return resetLinkInvalidPage();
+
+        if (password.length < 8 || password.length > 128) {
+          return authActionPageResponse({
+            title: 'Reset Password',
+            heading: '// Set a New Password',
+            message: 'Password must be at least 8 characters.',
+            formHtml: resetPasswordFormHtml(token),
+          }, 400);
+        }
+        if (password !== passwordConfirm) {
+          return authActionPageResponse({
+            title: 'Reset Password',
+            heading: '// Set a New Password',
+            message: 'Passwords did not match. Try again.',
+            formHtml: resetPasswordFormHtml(token),
+          }, 400);
+        }
+
+        const hash = await hashPassword(password);
+        await env.DB.prepare(`
+          UPDATE users SET password_hash = ?, password_reset_token_hash = NULL, password_reset_expires_at = NULL WHERE id = ?
+        `).bind(hash, match.id).run();
+
+        const sessionToken = await signJWT(
+          { sub: match.id, username: match.username, role: match.role ?? 'member', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
+          env.JWT_SECRET
+        );
+        return new Response(null, {
+          status: 302,
+          headers: addSecurityHeaders(new Headers({
+            'Location': `${url.origin}/profile?reset=1`,
+            'Set-Cookie': sessionCookie(sessionToken, 7 * 24 * 3600),
+          })),
+        });
+      }
+
+      // POST /api/auth/forgot-username — unauthenticated, same anti-
+      // enumeration principle as forgot-password. Usernames aren't secret,
+      // so this just emails a reminder — no token/link needed.
+      if (path === '/api/auth/forgot-username' && request.method === 'POST') {
+        if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+        const limited = await checkEmailActionLimit(env, request);
+        if (limited) return limited;
+        await recordEmailAction(env, request);
+
+        let body;
+        try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
+        const email = (body?.email ?? '').toString().trim().toLowerCase();
+        if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return jsonResponse({ error: 'Please enter a valid email address' }, 400);
+        }
+
+        const user = await env.DB.prepare('SELECT username FROM users WHERE email = ?').bind(email).first();
+        if (user && env.RESEND_API_KEY) {
+          try {
+            await sendResendEmail(env, {
+              to: email,
+              subject: 'Your username — CyberUnit @ UNG',
+              text: `Your username is: ${user.username}\n\nIf you didn't request this, you can ignore this email.`,
+              html: `<p>Your username is: <strong>${escapeHtml(user.username)}</strong></p><p>If you didn't request this, you can ignore this email.</p>`,
+            });
+          } catch (err) {
+            console.error('forgot-username send failed', err.message);
+          }
+        }
+
+        return jsonResponse({ ok: true });
       }
 
       // GET /api/progress  — returns [] if not authenticated (graceful for logged-out users)
@@ -1894,7 +2166,7 @@ export default {
       if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
 
       const user = await env.DB.prepare(
-        'SELECT id, username, role, avatar, created_at, is_public, email, email_pending, is_ung_student FROM users WHERE id = ?'
+        'SELECT id, username, role, avatar, created_at, is_public, email, email_pending FROM users WHERE id = ?'
       ).bind(session.sub).first();
       if (!user) return jsonResponse({ error: 'Not authenticated' }, 401);
 
@@ -1931,7 +2203,6 @@ export default {
         isPublic: !!user.is_public,
         email: user.email ?? null,
         emailPending: user.email_pending ?? null,
-        isUngStudent: !!user.is_ung_student,
         roomAttempts: roomAttempts ?? [],
         badges: pathwayBadges(doneTopics),
         rank,
@@ -1961,12 +2232,12 @@ export default {
     // logged-in users viewing /u/:username. Whitelisted fields only, and only
     // when the target has opted in via is_public. Never exposes quiz-room
     // history, per-topic quiz progress, or the verified email address itself
-    // — only the resulting isStudent/isUngStudent badges — even when public.
+    // — only the resulting isStudent badge — even when public.
     const publicUserMatch = path.match(/^\/api\/user\/([a-zA-Z0-9_]{3,20})$/);
     if (publicUserMatch && request.method === 'GET') {
       if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
       const target = await env.DB.prepare(
-        'SELECT id, username, role, avatar, created_at, is_public, is_ung_student FROM users WHERE username = ?'
+        'SELECT id, username, role, avatar, created_at, is_public FROM users WHERE username = ?'
       ).bind(publicUserMatch[1]).first();
       if (!target || target.role === 'guest') return jsonResponse({ error: 'User not found' }, 404);
       if (!target.is_public) return jsonResponse({ error: 'This profile is private' }, 403);
@@ -1984,7 +2255,6 @@ export default {
         rank: await leaderboardRank(env, 'quiz_results', target.id, target.username),
         roomRank: await leaderboardRank(env, 'quiz_room_attempts', target.id, target.username),
         isStudent: (ROLE_RANK[target.role] ?? 0) >= ROLE_RANK.student,
-        isUngStudent: !!target.is_ung_student,
       });
     }
 
@@ -3004,6 +3274,11 @@ export default {
     ctx.waitUntil(
       env.DB.prepare('DELETE FROM feedback_rate_limit WHERE ts < ?')
         .bind(Date.now() - FEEDBACK_RL_WINDOW_MS)
+        .run()
+    );
+    ctx.waitUntil(
+      env.DB.prepare('DELETE FROM email_action_rate_limit WHERE ts < ?')
+        .bind(Date.now() - EMAIL_ACTION_RL_WINDOW_MS)
         .run()
     );
   },

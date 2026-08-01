@@ -65,27 +65,45 @@ needs `type="module"`: see the `<head>` of any `public/*.html` page.)
 **Public/private profiles:** `users.is_public` (default `0`, opt-in) gates `/u/:username`.
 `GET /api/user/:username` is the only place that subset is ever returned — it must stay a
 strict field whitelist (username, avatar, member-since, pathway badges, module/room rank,
-isStudent, isUngStudent) and must **never** include quiz-room history, per-topic quiz
-progress, role, id, the verified email address itself, or any other field from
-`/api/profile`. Unknown username or a guest account → `404`; a real but private account →
-`403` (no data). The leaderboard links every username to `/u/:username` regardless of
-visibility — the private/404 state is resolved when that page is opened, not by hiding the
-link.
+isStudent) and must **never** include quiz-room history, per-topic quiz progress, role, id,
+the verified email address itself, or any other field from `/api/profile`. Unknown username
+or a guest account → `404`; a real but private account → `403` (no data). The leaderboard
+links every username to `/u/:username` regardless of visibility — the private/404 state is
+resolved when that page is opened, not by hiding the link.
 
-**Student role & email verification:** `users.role` can be `'student'` (ranked above
-`member`, below `instructor` in `ROLE_RANK`) once a member verifies any `*.edu` address via
-`/api/auth/verify-email/request` + `/api/auth/verify-email/confirm` (worker.js). `*@ung.edu`
-additionally sets `users.is_ung_student`. Role lives in the session JWT, not re-checked
-against the DB per request — `refreshRoleIfStale()` in worker.js reissues the cookie from
-`/api/auth/me` and `/api/profile` (both already polled on every page load) whenever the DB
-role has moved past the cookie's, so a verified user doesn't have to log out/in to unlock
-student-gated content (Quiz Rooms with `visibility='student'`, `/student-hub`). Verification
-emails send via the Resend HTTP API (`sendResendEmail()` in worker.js, plain `fetch()`, no
-binding) rather than Cloudflare's own Email Sending — that's a paid product; Resend's free
-tier covers this app's volume. Needs the `RESEND_API_KEY` secret set (`wrangler secret put
-RESEND_API_KEY`) and `ungcyberunit.org` verified with Resend, or `/api/auth/verify-email/request`
-silently skips sending (the `if (env.RESEND_API_KEY)` guard) so local dev without the secret
-still works.
+**Email verification (general-purpose, role-decoupled):** any signed-in non-guest member can
+confirm any email address on their account via `/api/auth/verify-email/request` +
+`/api/auth/verify-email/confirm` (worker.js) — no domain restriction, and confirming does
+**not** grant any role by itself. It's purely an identity/recovery marker (also backing
+forgot-password/forgot-username below). `users.role` still has a `'student'` tier (ranked
+above `member`, below `instructor` in `ROLE_RANK`, gates Quiz Rooms with
+`visibility='student'` and `/student-hub`) but it's **admin-assigned only**
+(`PATCH /api/admin/users/:id`) — there's currently no automatic path to it.
+`users.is_ung_student` is a dormant column, unreferenced by any code, reserved for a future
+UNG-specific feature that hasn't been designed yet — don't wire it back up without checking
+with the user first, it was deliberately decoupled.
+
+Role lives in the session JWT, not re-checked against the DB per request —
+`refreshRoleIfStale()` in worker.js reissues the cookie from `/api/auth/me` and
+`/api/profile` (both already polled on every page load) whenever the DB role has moved past
+the cookie's (e.g. after an admin promotes someone), so the browser doesn't need a
+log-out/in to pick it up.
+
+**GET-renders/POST-mutates for emailed links:** any single-use link clicked directly out of
+an email (`/api/auth/verify-email/confirm`, `/api/auth/reset-password`) must **never mutate
+state on `GET`** — only render a page with a plain `<form method="POST">` (no JS, so no CSP
+concerns). University-grade mail security gateways commonly pre-fetch every link in an
+inbound email automatically before a human opens it; a mutating `GET` lets that automated
+crawler silently burn the real user's token. `authActionPageResponse()` in worker.js is the
+shared page-builder for these — follow this pattern for any future emailed action link.
+
+Verification/reset/reminder emails send via the Resend HTTP API (`sendResendEmail()` in
+worker.js, plain `fetch()`, no binding) rather than Cloudflare's own Email Sending — that's a
+paid product; Resend's free tier covers this app's volume. Needs the `RESEND_API_KEY` secret
+set (`wrangler secret put RESEND_API_KEY`) and `ungcyberunit.org` verified with Resend, or
+the send is silently skipped (the `if (env.RESEND_API_KEY)` guard) so local dev without the
+secret still works — `verify-email/request` and `forgot-username` degrade to a no-op send;
+`forgot-password` still stores the token either way, just doesn't email the link.
 
 ## Verify before committing
 Run `npx wrangler dev` and actually exercise the change (repo pattern: drive it in
