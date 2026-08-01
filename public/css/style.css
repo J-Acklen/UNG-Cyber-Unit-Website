@@ -1774,6 +1774,15 @@ footer {
   background: var(--bg);
   color: var(--accent);
 }
+/* Dropdown items inherit .navbar-links a::after's animated underline, which
+   sits at bottom: -4px (fine in the horizontal navbar). .nav-dropdown-menu
+   clips overflow for its rounded corners, so the last item's underline —
+   the only one that actually reaches the container edge — gets cut off.
+   Dropdown rows have their own padding, so pull the underline inside the
+   row instead of past it. */
+.navbar-links .nav-dropdown-item::after {
+  bottom: 2px;
+}
 .nav-dropdown-item--danger { color: var(--danger); }
 .nav-dropdown-item--danger:hover {
   background: var(--bg);
