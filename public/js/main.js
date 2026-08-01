@@ -642,6 +642,10 @@ function isInstructor() {
   return currentUser?.role === 'instructor' || currentUser?.role === 'admin';
 }
 
+function isStudentPlus() {
+  return ['student', 'instructor', 'admin'].includes(currentUser?.role);
+}
+
 function updateAuthNav() {
   const navItem = document.getElementById('authNavItem');
   if (!navItem) return;
@@ -657,6 +661,7 @@ function updateAuthNav() {
     `<a href="/quiz" class="nav-dropdown-item">Join Room</a>`,
     `<a href="/leaderboard" class="nav-dropdown-item">Leaderboard</a>`,
     `<a href="/profile" class="nav-dropdown-item">Profile</a>`,
+    isStudentPlus() ? `<a href="/student-hub" class="nav-dropdown-item">Student Hub</a>` : '',
     isInstructor() ? `<a href="/instructor" class="nav-dropdown-item">Instructor Panel</a>` : '',
     currentUser?.role === 'admin' ? `<a href="/admin" class="nav-dropdown-item nav-dropdown-item--danger">Admin Panel</a>` : '',
     `<a href="/feedback" class="nav-dropdown-item">Feedback</a>`,
@@ -995,6 +1000,7 @@ async function initAdminPanel() {
                 <td>
                   <select class="role-select" data-uid="${u.id}" ${isSelf ? 'disabled' : ''} aria-label="Role for ${escHtml(u.username)}">
                     <option value="member"     ${u.role === 'member'     ? 'selected' : ''}>member</option>
+                    <option value="student"    ${u.role === 'student'    ? 'selected' : ''}>student</option>
                     <option value="instructor" ${u.role === 'instructor' ? 'selected' : ''}>instructor</option>
                     <option value="admin"      ${u.role === 'admin'      ? 'selected' : ''}>admin</option>
                   </select>
@@ -1421,12 +1427,14 @@ async function initInstructorPanel() {
         <tbody>
           ${rooms.map(r => {
             const isOpen = r.status === 'open';
+            const visClass = r.visibility === 'public' ? 'open' : r.visibility === 'student' ? 'student' : 'closed';
+            const visLabel = r.visibility === 'public' ? 'Public' : r.visibility === 'student' ? 'Student Only' : 'Private';
             return `
               <tr>
                 <td style="font-family:'Share Tech Mono',monospace;">${escHtml(r.title)}</td>
                 <td><code class="room-code-copy" data-code="${escHtml(r.code)}" title="Click to copy code" tabindex="0" role="button">${escHtml(r.code)}</code></td>
                 <td><span class="status-badge status-${isOpen ? 'open' : 'closed'}">${isOpen ? 'Open' : 'Closed'}</span></td>
-                <td><span class="status-badge status-${r.visibility === 'public' ? 'open' : 'closed'}">${r.visibility === 'public' ? 'Public' : 'Private'}</span></td>
+                <td><span class="status-badge status-${visClass}">${visLabel}</span></td>
                 <td style="text-align:center;color:var(--text-muted);">${r.question_count}</td>
                 <td style="text-align:center;color:var(--text-muted);">${r.attempt_count}</td>
                 <td style="color:var(--text-muted);font-size:0.85rem;">${new Date(r.created_at).toLocaleDateString()}</td>
@@ -2080,6 +2088,60 @@ function initFeedbackPage() {
   });
 }
 
+// ─── Student Hub ────────────────────────────────────────────────────────────
+
+async function initStudentHubPage() {
+  const gate = document.getElementById('loginGate');
+  const gateMsg = document.getElementById('loginGateMsg');
+  const content = document.getElementById('studentHubContent');
+
+  if (!isStudentPlus()) {
+    if (gateMsg) {
+      gateMsg.textContent = (!currentUser || currentUser.role === 'guest')
+        ? 'Sign in with a member account, then verify your .edu email on your Profile to unlock this.'
+        : 'Verified students only — verify your .edu email on your Profile to unlock this.';
+    }
+    if (gate) gate.hidden = false;
+    document.getElementById('loginGateBtn')?.addEventListener('click', () => {
+      if (!currentUser || currentUser.role === 'guest') openAuthModal('login');
+      else window.location.href = '/profile';
+    });
+    return;
+  }
+
+  if (content) content.hidden = false;
+  await loadStudentRooms();
+}
+
+async function loadStudentRooms() {
+  const wrap = document.getElementById('studentRoomsWrap');
+  if (!wrap) return;
+  try {
+    const res = await fetch('/api/rooms/public');
+    if (!res.ok) throw new Error();
+    const { results } = await res.json();
+    const studentRooms = (results ?? []).filter(r => r.visibility === 'student');
+    if (!studentRooms.length) {
+      wrap.innerHTML = `<p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;">No student-only rooms right now.</p>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="public-room-grid">
+        ${studentRooms.map(r => `
+          <div class="room-card">
+            <div class="room-card-title">${escHtml(r.title)}</div>
+            <div class="room-card-meta">By ${escHtml(r.instructor_name)} · ${r.question_count} question${r.question_count === 1 ? '' : 's'}</div>
+            <div class="room-card-footer">
+              <code>${escHtml(r.code)}</code>
+              <a href="/quiz/${escHtml(r.code)}" class="btn btn-sm">${r.attempted ? 'View Result' : 'Join'}</a>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  } catch {
+    wrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load rooms.</p>`;
+  }
+}
+
 async function loadLeaderboard(mode = 'modules') {
   const wrap = document.getElementById('leaderboardWrap');
   if (!wrap) return;
@@ -2219,9 +2281,88 @@ async function loadProfileAccount() {
     wireVisibilityToggle(profile.username);
     renderProfileRoomHistory(profile.roomAttempts ?? []);
     renderProfileBadges(profile.badges ?? []);
+    renderStudentVerification(profile);
   } catch {
     accountWrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load account info.</p>`;
     if (historyWrap) historyWrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load quiz room history.</p>`;
+  }
+}
+
+// ─── Student Verification ───────────────────────────────────────────────────
+
+function renderStudentVerification(profile) {
+  const wrap = document.getElementById('studentVerifyWrap');
+  if (!wrap) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const banner = document.getElementById('studentVerifyBanner');
+  if (banner && !banner.dataset.shown) {
+    if (params.get('verified') === '1') {
+      banner.textContent = '✅ Your student email is verified!';
+      banner.style.color = 'var(--accent)';
+      banner.hidden = false;
+      banner.dataset.shown = '1';
+    } else if (params.get('verify_error') === '1') {
+      banner.textContent = 'That verification link is invalid or has expired. Please request a new one below.';
+      banner.hidden = false;
+      banner.dataset.shown = '1';
+    }
+  }
+
+  if (profile.email) {
+    wrap.innerHTML = `
+      <p>🎓 <strong>Verified Student</strong>${profile.isUngStudent ? ' &nbsp; 🦅 <strong>UNG Student</strong>' : ''}</p>
+      <p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;font-size:0.85rem;">Verified email: ${escHtml(profile.email)}</p>`;
+    return;
+  }
+
+  if (profile.emailPending) {
+    wrap.innerHTML = `
+      <p>Verification email sent to <strong>${escHtml(profile.emailPending)}</strong> — check your inbox.</p>
+      <p class="form-error" id="studentVerifyError" hidden></p>
+      <button type="button" class="btn btn-sm" id="studentVerifyResendBtn">Resend</button>`;
+    document.getElementById('studentVerifyResendBtn')?.addEventListener('click', () => submitStudentVerify(profile.emailPending));
+    return;
+  }
+
+  wrap.innerHTML = `
+    <form id="studentVerifyForm" class="announcement-form">
+      <p class="form-error" id="studentVerifyError" hidden></p>
+      <div class="form-group">
+        <label for="studentVerifyEmail">Your .edu email</label>
+        <input type="email" id="studentVerifyEmail" placeholder="you@ung.edu" required>
+      </div>
+      <div class="announcement-form-actions">
+        <button type="submit" class="btn btn-primary" id="studentVerifySubmit">Send Verification Email</button>
+      </div>
+    </form>`;
+  document.getElementById('studentVerifyForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    submitStudentVerify(document.getElementById('studentVerifyEmail').value.trim());
+  });
+}
+
+async function submitStudentVerify(email) {
+  const errEl = document.getElementById('studentVerifyError');
+  const btn = document.getElementById('studentVerifySubmit') || document.getElementById('studentVerifyResendBtn');
+  if (errEl) errEl.hidden = true;
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/auth/verify-email/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (errEl) { errEl.textContent = data.error || 'Failed to send verification email.'; errEl.hidden = false; }
+      return;
+    }
+    await loadProfileAccount();
+  } catch {
+    if (errEl) { errEl.textContent = 'Failed to send verification email.'; errEl.hidden = false; }
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -2507,7 +2648,7 @@ function renderPublicRooms(rooms) {
     <div class="public-room-grid">
       ${rooms.map(r => `
         <div class="room-card">
-          <div class="room-card-title">${escHtml(r.title)}</div>
+          <div class="room-card-title">${escHtml(r.title)}${r.visibility === 'student' ? ' <span class="status-badge status-student">Student Only</span>' : ''}</div>
           <div class="room-card-meta">By ${escHtml(r.instructor_name)} · ${r.question_count} question${r.question_count === 1 ? '' : 's'}</div>
           <div class="room-card-footer">
             <code>${escHtml(r.code)}</code>
@@ -2806,5 +2947,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAdminPanel();
   } else if (window.location.pathname === '/feedback') {
     initFeedbackPage();
+  } else if (window.location.pathname === '/student-hub') {
+    initStudentHubPage();
   }
 });

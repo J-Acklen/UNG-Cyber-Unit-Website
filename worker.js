@@ -1313,6 +1313,45 @@ async function verifyPassword(password, stored) {
   return timingSafeEqual(computed, hashHex);
 }
 
+// Single-use email-verification tokens are stored hashed (never raw) so a
+// database leak alone can't be used to confirm arbitrary pending emails —
+// same rationale as hashing passwords.
+function randomTokenHex(byteLen = 32) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(byteLen)))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Sends via Resend's HTTP API (https://resend.com) rather than Cloudflare's
+// own Email Sending product — that requires a paid plan; Resend's free tier
+// (3,000/mo) covers this app's verification-email volume with a plain
+// fetch() call, no SDK/binding needed. Throws on failure; caller decides how
+// to surface that to the requester.
+async function sendResendEmail(env, { to, subject, html, text }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'CyberUnit @ UNG <noreply@ungcyberunit.org>',
+      to,
+      subject,
+      html,
+      text,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Resend API error ${res.status}: ${body}`);
+  }
+}
+
 async function signJWT(payload, secret) {
   const b64u = obj => btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   const header = b64u({ alg: 'HS256', typ: 'JWT' });
@@ -1352,9 +1391,23 @@ function sessionCookie(token, maxAge) {
   return `session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
 }
 
+// Role lives in the JWT, not re-checked against the DB on every request. If a
+// DB role change (e.g. a student email just got verified) has moved past what
+// this session's cookie was issued with, transparently reissue the cookie —
+// called from the two endpoints every page already polls on load
+// (/api/auth/me, /api/profile) so sessions self-heal without a re-login.
+async function refreshRoleIfStale(env, session, dbRole) {
+  if (!dbRole || dbRole === session.role) return { role: session.role ?? 'member', cookie: null };
+  const token = await signJWT(
+    { sub: session.sub, username: session.username, role: dbRole, exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
+    env.JWT_SECRET
+  );
+  return { role: dbRole, cookie: sessionCookie(token, 7 * 24 * 3600) };
+}
+
 // ─── Role Helpers ─────────────────────────────────────────────────────────────
 
-const ROLE_RANK = { guest: -1, member: 0, instructor: 1, admin: 2 };
+const ROLE_RANK = { guest: -1, member: 0, student: 1, instructor: 2, admin: 3 };
 
 async function requireRole(request, env, minRole) {
   const session = await getSession(request, env.JWT_SECRET);
@@ -1672,17 +1725,105 @@ export default {
         const session = await getSession(request, env.JWT_SECRET);
         if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
         let avatar = null;
+        let isUngStudent = false;
         let hasUnreadAnnouncements = false;
+        let role = session.role ?? 'member';
+        let extraHeaders = {};
         if (env.DB) {
-          const row = await env.DB.prepare('SELECT avatar, last_seen_announcements FROM users WHERE id = ?').bind(session.sub).first();
+          const row = await env.DB.prepare('SELECT avatar, last_seen_announcements, role, is_ung_student FROM users WHERE id = ?').bind(session.sub).first();
           avatar = row?.avatar ?? null;
+          isUngStudent = !!row?.is_ung_student;
+          const refreshed = await refreshRoleIfStale(env, session, row?.role);
+          role = refreshed.role;
+          if (refreshed.cookie) extraHeaders = { 'Set-Cookie': refreshed.cookie };
           // Guests can't view /announcements at all, so never flag them as unread.
-          if (session.role !== 'guest') {
+          if (role !== 'guest') {
             const latest = await env.DB.prepare('SELECT MAX(created_at) AS latest FROM announcements').first();
             hasUnreadAnnouncements = !!latest?.latest && (row?.last_seen_announcements ?? 0) < latest.latest;
           }
         }
-        return jsonResponse({ id: session.sub, username: session.username, role: session.role ?? 'member', avatar, hasUnreadAnnouncements });
+        return jsonResponse({ id: session.sub, username: session.username, role, avatar, isUngStudent, hasUnreadAnnouncements }, 200, extraHeaders);
+      }
+
+      // POST /api/auth/verify-email/request — any signed-in non-guest member
+      // can claim a .edu address; verifying it promotes 'member' to 'student'
+      // (see the confirm handler below) and flags @ung.edu specifically.
+      if (path === '/api/auth/verify-email/request' && request.method === 'POST') {
+        if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+        const session = await requireRole(request, env, 'member');
+        if (session instanceof Response) return session;
+
+        let body;
+        try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
+        const email = (body?.email ?? '').toString().trim().toLowerCase();
+        if (!email || email.length > 254 || !/^[^\s@]+@([a-zA-Z0-9-]+\.)+edu$/i.test(email)) {
+          return jsonResponse({ error: 'Please enter a valid .edu email address' }, 400);
+        }
+
+        const user = await env.DB.prepare(
+          'SELECT email, email_verify_last_sent_at FROM users WHERE id = ?'
+        ).bind(session.sub).first();
+        if (user?.email) return jsonResponse({ error: 'This account already has a verified student email' }, 409);
+
+        const takenByOther = await env.DB.prepare('SELECT id FROM users WHERE email = ? AND id != ?').bind(email, session.sub).first();
+        if (takenByOther) return jsonResponse({ error: 'This email is already verified on another account' }, 409);
+
+        const cooldownMs = 2 * 60 * 1000;
+        if (user?.email_verify_last_sent_at && Date.now() - user.email_verify_last_sent_at < cooldownMs) {
+          return jsonResponse({ error: 'Please wait a couple minutes before requesting another email' }, 429);
+        }
+
+        const token = randomTokenHex();
+        const tokenHash = await sha256Hex(token);
+        const now = Date.now();
+        await env.DB.prepare(`
+          UPDATE users
+          SET email_pending = ?, email_verify_token_hash = ?, email_verify_expires_at = ?, email_verify_last_sent_at = ?
+          WHERE id = ?
+        `).bind(email, tokenHash, now + 60 * 60 * 1000, now, session.sub).run();
+
+        if (env.RESEND_API_KEY) {
+          const confirmUrl = `${url.origin}/api/auth/verify-email/confirm?token=${token}`;
+          try {
+            await sendResendEmail(env, {
+              to: email,
+              subject: 'Verify your student email — CyberUnit @ UNG',
+              text: `Confirm your student email by opening this link (expires in 1 hour):\n\n${confirmUrl}\n\nIf you didn't request this, you can ignore this email.`,
+              html: `<p>Confirm your student email by clicking the link below (expires in 1 hour):</p><p><a href="${confirmUrl}">${confirmUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+            });
+          } catch (err) {
+            console.error('verify-email send failed', err.message);
+            return jsonResponse({ error: 'Failed to send verification email, please try again shortly' }, 502);
+          }
+        }
+
+        return jsonResponse({ ok: true });
+      }
+
+      // GET /api/auth/verify-email/confirm — clicked directly from the emailed
+      // link, so it can't require the requesting browser's own session; the
+      // high-entropy token itself is the credential (same trust model as a
+      // password-reset link).
+      if (path === '/api/auth/verify-email/confirm' && request.method === 'GET') {
+        if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+        const token = url.searchParams.get('token') ?? '';
+        const tokenHash = token ? await sha256Hex(token) : '';
+        const match = tokenHash && await env.DB.prepare(
+          'SELECT id, email_pending FROM users WHERE email_verify_token_hash = ? AND email_verify_expires_at > ?'
+        ).bind(tokenHash, Date.now()).first();
+
+        if (!match) return Response.redirect(`${url.origin}/profile?verify_error=1`, 302);
+
+        const isUngStudent = /@ung\.edu$/i.test(match.email_pending) ? 1 : 0;
+        await env.DB.prepare(`
+          UPDATE users
+          SET email = email_pending, email_pending = NULL, email_verify_token_hash = NULL,
+              email_verify_expires_at = NULL, is_ung_student = ?,
+              role = CASE WHEN role = 'member' THEN 'student' ELSE role END
+          WHERE id = ?
+        `).bind(isUngStudent, match.id).run();
+
+        return Response.redirect(`${url.origin}/profile?verified=1`, 302);
       }
 
       // GET /api/progress  — returns [] if not authenticated (graceful for logged-out users)
@@ -1753,9 +1894,12 @@ export default {
       if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
 
       const user = await env.DB.prepare(
-        'SELECT id, username, role, avatar, created_at, is_public FROM users WHERE id = ?'
+        'SELECT id, username, role, avatar, created_at, is_public, email, email_pending, is_ung_student FROM users WHERE id = ?'
       ).bind(session.sub).first();
       if (!user) return jsonResponse({ error: 'Not authenticated' }, 401);
+
+      const { role, cookie } = await refreshRoleIfStale(env, session, user.role);
+      const profileExtraHeaders = cookie ? { 'Set-Cookie': cookie } : {};
 
       const { results: roomAttempts } = await env.DB.prepare(`
         SELECT r.title, r.code, a.score, a.total, a.completed_at,
@@ -1774,22 +1918,25 @@ export default {
       const doneTopics = new Set((prog ?? []).map(r => String(r.topic_id)));
 
       // Leaderboard ranks (module completion + quiz rooms). Guests are unranked.
-      const isGuest = (user.role ?? 'member') === 'guest';
+      const isGuest = role === 'guest';
       const rank = isGuest ? null : await leaderboardRank(env, 'quiz_results', session.sub, user.username);
       const roomRank = isGuest ? null : await leaderboardRank(env, 'quiz_room_attempts', session.sub, user.username);
 
       return jsonResponse({
         id: user.id,
         username: user.username,
-        role: user.role ?? 'member',
+        role,
         avatar: user.avatar ?? null,
         created_at: user.created_at,
         isPublic: !!user.is_public,
+        email: user.email ?? null,
+        emailPending: user.email_pending ?? null,
+        isUngStudent: !!user.is_ung_student,
         roomAttempts: roomAttempts ?? [],
         badges: pathwayBadges(doneTopics),
         rank,
         roomRank,
-      });
+      }, 200, profileExtraHeaders);
     }
 
     // POST /api/profile/visibility — toggle whether other logged-in users can
@@ -1813,12 +1960,13 @@ export default {
     // GET /api/user/:username — the public subset of a profile, for other
     // logged-in users viewing /u/:username. Whitelisted fields only, and only
     // when the target has opted in via is_public. Never exposes quiz-room
-    // history or per-topic quiz progress — those stay private even when public.
+    // history, per-topic quiz progress, or the verified email address itself
+    // — only the resulting isStudent/isUngStudent badges — even when public.
     const publicUserMatch = path.match(/^\/api\/user\/([a-zA-Z0-9_]{3,20})$/);
     if (publicUserMatch && request.method === 'GET') {
       if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
       const target = await env.DB.prepare(
-        'SELECT id, username, role, avatar, created_at, is_public FROM users WHERE username = ?'
+        'SELECT id, username, role, avatar, created_at, is_public, is_ung_student FROM users WHERE username = ?'
       ).bind(publicUserMatch[1]).first();
       if (!target || target.role === 'guest') return jsonResponse({ error: 'User not found' }, 404);
       if (!target.is_public) return jsonResponse({ error: 'This profile is private' }, 403);
@@ -1835,6 +1983,8 @@ export default {
         badges: pathwayBadges(doneTopics),
         rank: await leaderboardRank(env, 'quiz_results', target.id, target.username),
         roomRank: await leaderboardRank(env, 'quiz_room_attempts', target.id, target.username),
+        isStudent: (ROLE_RANK[target.role] ?? 0) >= ROLE_RANK.student,
+        isUngStudent: !!target.is_ung_student,
       });
     }
 
@@ -1937,7 +2087,7 @@ export default {
         let body;
         try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
         const { role } = body ?? {};
-        if (!['member', 'instructor', 'admin'].includes(role)) return jsonResponse({ error: 'Invalid role' }, 400);
+        if (!['member', 'student', 'instructor', 'admin'].includes(role)) return jsonResponse({ error: 'Invalid role' }, 400);
         const info = await env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, targetId).run();
         if (info.meta.changes === 0) return jsonResponse({ error: 'User not found' }, 404);
         return jsonResponse({ ok: true });
@@ -2115,8 +2265,8 @@ export default {
         if (title.length > 200) return jsonResponse({ error: 'Room title must be 200 characters or fewer' }, 400);
 
         const visibility = (formData.get('visibility') ?? 'private').toString().toLowerCase();
-        if (!['public', 'private'].includes(visibility)) {
-          return jsonResponse({ error: 'visibility must be "public" or "private"' }, 400);
+        if (!['public', 'private', 'student'].includes(visibility)) {
+          return jsonResponse({ error: 'visibility must be "public", "private", or "student"' }, 400);
         }
 
         const expiresRaw = formData.get('expires_at');
@@ -2205,18 +2355,23 @@ export default {
         if (session instanceof Response) return session;
 
         const nowSecs = Math.floor(Date.now() / 1000);
+        // Student-only rooms are only listed to verified students+ — plain
+        // members never see them here (they'd also be rejected on join/attempt).
+        const visibilities = (ROLE_RANK[session.role] ?? 0) >= ROLE_RANK.student
+          ? ['public', 'student']
+          : ['public'];
         const { results } = await env.DB.prepare(`
-          SELECT r.code, r.title, r.created_at, u.username AS instructor_name,
+          SELECT r.code, r.title, r.created_at, r.visibility, u.username AS instructor_name,
                  COUNT(DISTINCT q.id) AS question_count,
                  att.id IS NOT NULL AS attempted
           FROM quiz_rooms r
           JOIN users u ON u.id = r.created_by
           LEFT JOIN quiz_room_questions q ON q.room_id = r.id
           LEFT JOIN quiz_room_attempts att ON att.room_id = r.id AND att.user_id = ?
-          WHERE r.visibility = 'public' AND r.status = 'open'
+          WHERE r.visibility IN (${visibilities.map(() => '?').join(',')}) AND r.status = 'open'
             AND (r.expires_at IS NULL OR r.expires_at > ?)
           GROUP BY r.id ORDER BY r.created_at DESC
-        `).bind(session.sub, nowSecs).all();
+        `).bind(session.sub, ...visibilities, nowSecs).all();
         return jsonResponse({ results: results ?? [] });
       }
 
@@ -2306,7 +2461,7 @@ export default {
           if (limited) return limited;
 
           const room = await env.DB.prepare(
-            'SELECT id, code, title, status, expires_at FROM quiz_rooms WHERE code = ?'
+            'SELECT id, code, title, status, expires_at, visibility FROM quiz_rooms WHERE code = ?'
           ).bind(code).first();
 
           // Users who already attempted legitimately know the room exists, so
@@ -2314,6 +2469,13 @@ export default {
           const attempt = room ? await env.DB.prepare(
             'SELECT id, score, total, completed_at FROM quiz_room_attempts WHERE room_id = ? AND user_id = ?'
           ).bind(room.id, session.sub).first() : null;
+
+          // Student-only rooms aren't code-secrets (they're listed to anyone
+          // qualified), so a clear 403 is appropriate here, unlike the uniform
+          // roomUnavailable() below which exists to stop code-guessing.
+          if (room && !attempt && room.visibility === 'student' && (ROLE_RANK[session.role] ?? 0) < ROLE_RANK.student) {
+            return jsonResponse({ error: 'This room is for verified students only.' }, 403);
+          }
 
           if (!attempt && (!room || room.status === 'closed' || (room.expires_at && Date.now() / 1000 > room.expires_at))) {
             // Unknown, closed, and expired codes are indistinguishable, and each
@@ -2413,12 +2575,16 @@ export default {
           if (limited) return limited;
 
           const room = await env.DB.prepare(
-            'SELECT id, code, title, status, expires_at FROM quiz_rooms WHERE code = ?'
+            'SELECT id, code, title, status, expires_at, visibility FROM quiz_rooms WHERE code = ?'
           ).bind(code).first();
           const existing = room ? await env.DB.prepare(
             'SELECT id FROM quiz_room_attempts WHERE room_id = ? AND user_id = ?'
           ).bind(room.id, session.sub).first() : null;
           if (existing) return jsonResponse({ error: 'You have already submitted this quiz' }, 409);
+
+          if (room && room.visibility === 'student' && (ROLE_RANK[session.role] ?? 0) < ROLE_RANK.student) {
+            return jsonResponse({ error: 'This room is for verified students only.' }, 403);
+          }
 
           // Unknown, closed, and expired codes look identical and count toward
           // the brute-force limit (a prior attempt is handled above).
@@ -2702,6 +2868,7 @@ export default {
       '/leaderboard': '/leaderboard',
       '/announcements': '/announcements',
       '/feedback': '/feedback',
+      '/student-hub': '/student-hub',
     };
 
     // topic/:id — any path matching /topic/<something>

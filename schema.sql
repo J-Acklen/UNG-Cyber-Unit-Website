@@ -8,8 +8,17 @@ CREATE TABLE IF NOT EXISTS users (
   last_active   TEXT,
   created_at    INTEGER NOT NULL,
   is_public     INTEGER NOT NULL DEFAULT 0,
-  last_seen_announcements INTEGER
+  last_seen_announcements INTEGER,
+  email                     TEXT,
+  email_pending             TEXT,
+  email_verify_token_hash   TEXT,
+  email_verify_expires_at   INTEGER,
+  email_verify_last_sent_at INTEGER,
+  is_ung_student            INTEGER NOT NULL DEFAULT 0
 );
+
+-- Verified student email must uniquely identify one account.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS quiz_results (
   user_id    INTEGER NOT NULL,

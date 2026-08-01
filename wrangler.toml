@@ -9,12 +9,17 @@ binding = "ASSETS"
 # (CSP, X-Frame-Options, etc.); static files would otherwise bypass them. Only
 # the pages are listed — CSS/JS/images stay served directly by the asset layer
 # (correct MIME, edge-fast). The "/" branch also server-renders the topic grid.
-run_worker_first = [ "/", "/start", "/about", "/resources", "/admin", "/instructor", "/profile", "/quiz", "/leaderboard", "/announcements", "/feedback" ]
+run_worker_first = [ "/", "/start", "/about", "/resources", "/admin", "/instructor", "/profile", "/quiz", "/leaderboard", "/announcements", "/feedback", "/student-hub" ]
 
 [[d1_databases]]
 binding      = "DB"
 database_name = "cyber-unit-db"
 database_id  = "30fcf0cc-9912-430e-a8d2-54b9dec9ba1a"
+
+# .edu student-verification emails (see /api/auth/verify-email/request in
+# worker.js) send via the Resend HTTP API rather than Cloudflare's own Email
+# Sending product (paid) — no binding needed, just the RESEND_API_KEY secret
+# (`wrangler secret put RESEND_API_KEY`) and a domain verified with Resend.
 
 # Hourly cleanup of expired room-code rate-limit rows (see scheduled() in worker.js)
 [triggers]

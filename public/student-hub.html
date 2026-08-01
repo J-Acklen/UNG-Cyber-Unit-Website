@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>CyberUnit @ UNG — Student Hub</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="/resources">Resources</a></li>
+        <li><a href="/about">About</a></li>
+        <li id="authNavItem"></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+    <div class="container" style="max-width: 900px; padding: 2rem 1rem;">
+
+      <header style="margin-bottom: 2rem;">
+        <h1>// Student Hub</h1>
+        <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; margin: 0.4rem 0 0;">
+          Quizzes and progression for verified Cyber Unit students
+        </p>
+      </header>
+
+      <!-- Shown to anyone who isn't a verified student -->
+      <div id="loginGate" class="login-gate" hidden>
+        <p style="font-size:2rem;margin-bottom:0.75rem;">🎓</p>
+        <p id="loginGateMsg" style="margin-bottom:1.25rem;">Verified students only — verify your .edu email on your Profile to unlock this.</p>
+        <button class="btn btn-primary" id="loginGateBtn">Go to Profile</button>
+      </div>
+
+      <!-- Shown to verified students+ -->
+      <div id="studentHubContent" hidden>
+
+        <section class="instructor-section">
+          <h2 class="instructor-section-heading">// Student-Only Quiz Rooms</h2>
+          <div id="studentRoomsWrap">
+            <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace;">Loading...</p>
+          </div>
+        </section>
+
+        <section class="instructor-section">
+          <h2 class="instructor-section-heading">// Promotion Week</h2>
+          <p style="color: var(--text-muted);">Details will be posted here closer to Promotion Week.</p>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

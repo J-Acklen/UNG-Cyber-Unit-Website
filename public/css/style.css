@@ -2208,6 +2208,12 @@ footer {
   border: 1px solid var(--border);
 }
 
+.status-student {
+  background: rgba(68, 136, 255, 0.1);
+  color: var(--info);
+  border: 1px solid rgba(68, 136, 255, 0.3);
+}
+
 /* Room action buttons — tighter spacing */
 .room-actions {
   display: flex;
