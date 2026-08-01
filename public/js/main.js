@@ -2408,11 +2408,23 @@ function renderEmailVerification(profile) {
     wrap.innerHTML = `
       <p>Verification email sent to <strong>${escHtml(profile.emailPending)}</strong> — check your inbox.</p>
       <p class="form-error" id="emailVerifyError" hidden></p>
-      <button type="button" class="btn btn-sm" id="emailVerifyResendBtn">Resend</button>`;
+      <div class="announcement-form-actions">
+        <button type="button" class="btn btn-sm" id="emailVerifyResendBtn">Resend</button>
+        <button type="button" class="link-btn" id="emailVerifyChangeBtn">Use a different email</button>
+      </div>`;
     document.getElementById('emailVerifyResendBtn')?.addEventListener('click', () => submitEmailVerify(profile.emailPending));
+    // Wrong address, typo, whatever — let them enter a new one. The request
+    // endpoint already overwrites email_pending on each call (still subject
+    // to the same per-account cooldown), so this just needs to show the
+    // input again rather than being stuck on the address already sent to.
+    document.getElementById('emailVerifyChangeBtn')?.addEventListener('click', () => renderEmailVerifyForm(wrap));
     return;
   }
 
+  renderEmailVerifyForm(wrap);
+}
+
+function renderEmailVerifyForm(wrap) {
   wrap.innerHTML = `
     <form id="emailVerifyForm" class="announcement-form">
       <p class="form-error" id="emailVerifyError" hidden></p>
