@@ -659,6 +659,7 @@ function updateAuthNav() {
     `<a href="/profile" class="nav-dropdown-item">Profile</a>`,
     isInstructor() ? `<a href="/instructor" class="nav-dropdown-item">Instructor Panel</a>` : '',
     currentUser?.role === 'admin' ? `<a href="/admin" class="nav-dropdown-item nav-dropdown-item--danger">Admin Panel</a>` : '',
+    `<a href="/feedback" class="nav-dropdown-item">Feedback</a>`,
   ].filter(Boolean).join('');
 
   const menuBtn = `<div class="nav-dropdown" id="navMenuDropdown">
