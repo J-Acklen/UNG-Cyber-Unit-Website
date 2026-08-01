@@ -1413,6 +1413,31 @@ async function recordRoomLookupFailure(env, request) {
   await env.DB.prepare('DELETE FROM room_lookup_failures WHERE ts < ?').bind(now - ROOM_RL_WINDOW_MS).run();
 }
 
+const FEEDBACK_RL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const FEEDBACK_RL_MAX = 5;                    // submissions per IP per window
+
+// Returns a 429 Response when this IP is over the limit, otherwise null.
+async function checkFeedbackLimit(env, request) {
+  if (!env.DB) return null;
+  const cutoff = Date.now() - FEEDBACK_RL_WINDOW_MS;
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM feedback_rate_limit WHERE ip = ? AND ts > ?'
+  ).bind(clientIP(request), cutoff).first();
+  if ((row?.n ?? 0) >= FEEDBACK_RL_MAX) {
+    return jsonResponse({ error: 'Too much feedback submitted recently. Please wait a while and try again.' }, 429);
+  }
+  return null;
+}
+
+async function recordFeedbackSubmission(env, request) {
+  if (!env.DB) return;
+  const now = Date.now();
+  await env.DB.prepare('INSERT INTO feedback_rate_limit (ip, ts) VALUES (?, ?)')
+    .bind(clientIP(request), now).run();
+  // Opportunistically prune expired rows so the table stays small.
+  await env.DB.prepare('DELETE FROM feedback_rate_limit WHERE ts < ?').bind(now - FEEDBACK_RL_WINDOW_MS).run();
+}
+
 // Uniform response for any code that can't be joined (unknown, closed, or
 // expired) so responses can't be used to probe which private rooms exist.
 function roomUnavailable() {
@@ -2014,6 +2039,61 @@ export default {
 
         const info = await env.DB.prepare('DELETE FROM announcements WHERE id = ?').bind(idMatch[1]).run();
         if (info.meta.changes === 0) return jsonResponse({ error: 'Announcement not found' }, 404);
+        return jsonResponse({ ok: true });
+      }
+    }
+
+    // ── Feedback API ─────────────────────────────────────────────────────────
+    // Open to anyone, signed in or not — this is the site's public suggestion
+    // box, so submission has no requireRole gate, just IP rate-limiting.
+    // Reading/deleting submissions is admin-only.
+    if (path.startsWith('/api/feedback')) {
+      if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
+
+      // POST /api/feedback — anyone may submit; username attached only if
+      // a valid session happens to be present (getSession, not requireRole,
+      // so signed-out visitors aren't blocked).
+      if (path === '/api/feedback' && request.method === 'POST') {
+        const limited = await checkFeedbackLimit(env, request);
+        if (limited) return limited;
+
+        let body;
+        try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
+        const message = (body?.message ?? '').toString().trim();
+        if (!message) return jsonResponse({ error: 'Message is required' }, 400);
+        if (message.length > 5000) return jsonResponse({ error: 'Message must be 5000 characters or fewer' }, 400);
+
+        const session = env.JWT_SECRET ? await getSession(request, env.JWT_SECRET) : null;
+        const username = session?.username ?? null;
+
+        const now = Date.now();
+        await env.DB.prepare(
+          'INSERT INTO feedback (message, username, created_at) VALUES (?, ?, ?)'
+        ).bind(message, username, now).run();
+        await recordFeedbackSubmission(env, request);
+        return jsonResponse({ ok: true }, 201);
+      }
+
+      const feedbackIdMatch = path.match(/^\/api\/feedback\/(\d+)$/);
+
+      // GET /api/feedback — admin reviews all submissions, newest first.
+      if (path === '/api/feedback' && request.method === 'GET') {
+        const session = await requireRole(request, env, 'admin');
+        if (session instanceof Response) return session;
+
+        const { results } = await env.DB.prepare(
+          'SELECT id, message, username, created_at FROM feedback ORDER BY created_at DESC'
+        ).all();
+        return jsonResponse({ results: results ?? [] });
+      }
+
+      // DELETE /api/feedback/:id — admin dismisses a submission.
+      if (feedbackIdMatch && request.method === 'DELETE') {
+        const session = await requireRole(request, env, 'admin');
+        if (session instanceof Response) return session;
+
+        const info = await env.DB.prepare('DELETE FROM feedback WHERE id = ?').bind(feedbackIdMatch[1]).run();
+        if (info.meta.changes === 0) return jsonResponse({ error: 'Feedback not found' }, 404);
         return jsonResponse({ ok: true });
       }
     }
@@ -2621,6 +2701,7 @@ export default {
       '/start': '/start',
       '/leaderboard': '/leaderboard',
       '/announcements': '/announcements',
+      '/feedback': '/feedback',
     };
 
     // topic/:id — any path matching /topic/<something>
@@ -2751,6 +2832,11 @@ export default {
     ctx.waitUntil(
       env.DB.prepare('DELETE FROM room_lookup_failures WHERE ts < ?')
         .bind(Date.now() - ROOM_RL_WINDOW_MS)
+        .run()
+    );
+    ctx.waitUntil(
+      env.DB.prepare('DELETE FROM feedback_rate_limit WHERE ts < ?')
+        .bind(Date.now() - FEEDBACK_RL_WINDOW_MS)
         .run()
     );
   },

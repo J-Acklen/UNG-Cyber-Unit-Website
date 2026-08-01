@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
-  <title>CyberUnit @ UNG — Leaderboard</title>
+  <title>CyberUnit @ UNG — Feedback</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -28,33 +28,26 @@
   </nav>
 
   <main class="page-body">
-    <div class="container" style="max-width: 800px; padding: 2rem 1rem;">
+    <div class="container" style="max-width: 700px; padding: 2rem 1rem;">
 
       <header style="margin-bottom: 2rem;">
-        <h1 style="font-family: 'Share Tech Mono', monospace; color: var(--accent); font-size: 1.6rem; margin: 0 0 0.25rem;">
-          // Top Performers
-        </h1>
-        <p id="lbSubtitle" style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; margin: 0;">
-          Ranked by total module-completion points
+        <h1>// Feedback</h1>
+        <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; margin: 0.4rem 0 0;">
+          Suggestions to improve the unit or the site — open to everyone, no account needed.
         </p>
       </header>
 
-      <!-- Shown when not signed in -->
-      <div id="loginGate" class="login-gate" hidden>
-        <p style="font-size:2rem;margin-bottom:0.75rem;">🔒</p>
-        <p style="margin-bottom:1.25rem;">Sign in to view the leaderboard.</p>
-        <button class="btn btn-primary" id="loginGateBtn">Sign In</button>
-      </div>
-
-      <!-- Shown when signed in -->
-      <div id="leaderboardContent" hidden>
-        <div class="lb-modes" role="tablist" aria-label="Leaderboard mode">
-          <button class="lb-mode-btn is-active" data-mode="modules" role="tab" aria-selected="true">Module Completion</button>
-          <button class="lb-mode-btn" data-mode="rooms" role="tab" aria-selected="false">Quiz Rooms</button>
-        </div>
-        <div id="leaderboardWrap">
-          <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace;">Loading...</p>
-        </div>
+      <div id="feedbackFormWrap">
+        <form id="feedbackForm" class="announcement-form">
+          <p class="form-error" id="feedbackFormError" hidden></p>
+          <div class="form-group">
+            <label for="feedbackMessage">Your suggestion</label>
+            <textarea id="feedbackMessage" rows="6" maxlength="5000" required placeholder="What would make the unit or the site better?"></textarea>
+          </div>
+          <div class="announcement-form-actions">
+            <button type="submit" class="btn btn-primary" id="feedbackFormSubmit">Send Feedback</button>
+          </div>
+        </form>
       </div>
 
     </div>

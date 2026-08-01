@@ -1080,6 +1080,56 @@ async function initAdminPanel() {
   });
 
   await loadUsers();
+  await loadFeedback();
+}
+
+async function loadFeedback() {
+  const wrap = document.getElementById('feedbackTableWrap');
+  if (!wrap) return;
+  let items = [];
+  try {
+    const res = await fetch('/api/feedback');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    items = data.results ?? [];
+  } catch {
+    wrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load feedback.</p>`;
+    return;
+  }
+
+  function render() {
+    if (!items.length) {
+      wrap.innerHTML = `<p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;">No feedback yet.</p>`;
+      return;
+    }
+    wrap.innerHTML = items.map(f => `
+      <div class="card announcement-card">
+        <p class="card-desc">${escHtml(f.message)}</p>
+        <div class="card-footer announcement-footer">
+          <span class="announcement-meta">${escHtml(f.username || 'Anonymous')} — ${new Date(f.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <div class="announcement-actions">
+            <button type="button" class="btn btn-sm btn-danger delete-feedback-btn" data-id="${f.id}">Delete</button>
+          </div>
+        </div>
+      </div>`).join('');
+
+    wrap.querySelectorAll('.delete-feedback-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.dataset.id, 10);
+        confirmDialog('Delete this feedback submission? This cannot be undone.', async () => {
+          const res = await fetch(`/api/feedback/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            items = items.filter(x => x.id !== id);
+            render();
+          } else {
+            alert('Failed to delete feedback.');
+          }
+        }, 'Delete');
+      });
+    });
+  }
+
+  render();
 }
 
 // ─── Instructor Panel ─────────────────────────────────────────────────────────
@@ -1993,6 +2043,42 @@ async function initAnnouncementsPage() {
   await loadAnnouncements();
 }
 
+// ─── Feedback ───────────────────────────────────────────────────────────────
+
+function initFeedbackPage() {
+  const form = document.getElementById('feedbackForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('feedbackFormError');
+    errEl.hidden = true;
+
+    const message = document.getElementById('feedbackMessage').value.trim();
+    if (!message) { errEl.textContent = 'Please enter a message before sending.'; errEl.hidden = false; return; }
+
+    const submitBtn = document.getElementById('feedbackFormSubmit');
+    submitBtn.disabled = true;
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Failed to send feedback.'; errEl.hidden = false; return; }
+
+      document.getElementById('feedbackFormWrap').innerHTML =
+        `<p class="card-desc">Thanks — your feedback has been sent.</p>`;
+    } catch {
+      errEl.textContent = 'Failed to send feedback. Please try again.';
+      errEl.hidden = false;
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
 async function loadLeaderboard(mode = 'modules') {
   const wrap = document.getElementById('leaderboardWrap');
   if (!wrap) return;
@@ -2717,5 +2803,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initInstructorPanel();
   } else if (window.location.pathname === '/admin') {
     initAdminPanel();
+  } else if (window.location.pathname === '/feedback') {
+    initFeedbackPage();
   }
 });

@@ -85,3 +85,19 @@ CREATE TABLE IF NOT EXISTS announcements (
   updated_at  INTEGER,
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  message     TEXT    NOT NULL,
+  username    TEXT,
+  created_at  INTEGER NOT NULL
+);
+
+-- Sliding-window rate limit for the open (unauthenticated) feedback form:
+-- one row per submission, same shape as room_lookup_failures.
+CREATE TABLE IF NOT EXISTS feedback_rate_limit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT    NOT NULL,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_frl_ip_ts ON feedback_rate_limit (ip, ts);
