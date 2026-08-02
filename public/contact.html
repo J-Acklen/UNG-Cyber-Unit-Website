@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>CyberUnit @ UNG — Contact Us</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ─── Navbar ──────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="navbar-logo"><img src="/images/CyberUnitLogo_Transparent.png" alt="CyberUnit @ UNG" class="navbar-logo-img"><span class="navbar-logo-text">[ CyberUnit @ UNG ]</span></a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="/resources">Resources</a></li>
+        <li><a href="/about">About</a></li>
+        <li id="authNavItem"></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-body">
+    <div class="container" style="max-width: 700px; padding: 2rem 1rem;">
+
+      <header style="margin-bottom: 2rem;">
+        <h1>// Contact Us</h1>
+        <p style="color: var(--text-muted); font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; margin: 0.4rem 0 0;">
+          Reach out directly, or send a message below — open to everyone, no account needed.
+        </p>
+      </header>
+
+      <section class="instructor-section">
+        <h2 class="instructor-section-heading">// Reach Us Directly</h2>
+        <div class="results-summary-grid">
+          <a href="mailto:joshuaacklen@ungcyberunit.org" class="results-stat results-stat--link" aria-label="Email us at joshuaacklen@ungcyberunit.org">
+            <span class="results-stat-val" style="font-size:1rem;word-break:break-all;">joshuaacklen@ungcyberunit.org</span>
+            <span class="results-stat-label">Email ↗</span>
+          </a>
+          <div class="results-stat">
+            <span class="results-stat-val" style="font-size:1rem;">Dahlonega, GA 30597</span>
+            <span class="results-stat-label">Address</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="instructor-section">
+        <h2 class="instructor-section-heading">// Send Us a Message</h2>
+        <div id="contactFormWrap">
+          <form id="contactForm" class="announcement-form">
+            <p class="form-error" id="contactFormError" hidden></p>
+            <div class="form-group">
+              <label for="contactMessage">Your message</label>
+              <textarea id="contactMessage" rows="6" maxlength="5000" required placeholder="What would make the unit or the site better?"></textarea>
+            </div>
+            <div class="announcement-form-actions">
+              <button type="submit" class="btn btn-primary" id="contactFormSubmit">Send Message</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

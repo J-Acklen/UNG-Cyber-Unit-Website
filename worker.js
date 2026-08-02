@@ -1518,7 +1518,7 @@ async function checkFeedbackLimit(env, request) {
     'SELECT COUNT(*) AS n FROM feedback_rate_limit WHERE ip = ? AND ts > ?'
   ).bind(clientIP(request), cutoff).first();
   if ((row?.n ?? 0) >= FEEDBACK_RL_MAX) {
-    return jsonResponse({ error: 'Too much feedback submitted recently. Please wait a while and try again.' }, 429);
+    return jsonResponse({ error: 'Too many messages submitted recently. Please wait a while and try again.' }, 429);
   }
   return null;
 }
@@ -3137,7 +3137,7 @@ export default {
       '/start': '/start',
       '/leaderboard': '/leaderboard',
       '/announcements': '/announcements',
-      '/feedback': '/feedback',
+      '/contact': '/contact',
       '/student-hub': '/student-hub',
     };
 
@@ -3160,6 +3160,9 @@ export default {
       assetPath = '/u';
     } else if (path === '/sop') {
       assetPath = '/Cyber_Unit_SOP.pdf';
+    } else if (path === '/feedback') {
+      // Renamed to /contact — redirect any old bookmarks/links.
+      return Response.redirect(`${url.origin}/contact`, 301);
     } else if (path === '/danica') {
       return new Response('I love you! <3', {
         headers: addSecurityHeaders(new Headers({ 'Content-Type': 'text/plain; charset=utf-8' })),

@@ -663,7 +663,7 @@ function updateAuthNav() {
     isStudentPlus() ? `<a href="/student-hub" class="nav-dropdown-item">Student Hub</a>` : '',
     isInstructor() ? `<a href="/instructor" class="nav-dropdown-item">Instructor Panel</a>` : '',
     currentUser?.role === 'admin' ? `<a href="/admin" class="nav-dropdown-item nav-dropdown-item--danger">Admin Panel</a>` : '',
-    `<a href="/feedback" class="nav-dropdown-item">Feedback</a>`,
+    `<a href="/contact" class="nav-dropdown-item">Contact Us</a>`,
   ].filter(Boolean).join('');
 
   const menuBtn = `<div class="nav-dropdown" id="navMenuDropdown">
@@ -1182,13 +1182,13 @@ async function loadFeedback() {
     const data = await res.json();
     items = data.results ?? [];
   } catch {
-    wrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load feedback.</p>`;
+    wrap.innerHTML = `<p style="color:var(--danger);font-family:'Share Tech Mono',monospace;">Failed to load messages.</p>`;
     return;
   }
 
   function render() {
     if (!items.length) {
-      wrap.innerHTML = `<p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;">No feedback yet.</p>`;
+      wrap.innerHTML = `<p style="color:var(--text-muted);font-family:'Share Tech Mono',monospace;">No messages yet.</p>`;
       return;
     }
     wrap.innerHTML = items.map(f => `
@@ -1205,13 +1205,13 @@ async function loadFeedback() {
     wrap.querySelectorAll('.delete-feedback-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = parseInt(btn.dataset.id, 10);
-        confirmDialog('Delete this feedback submission? This cannot be undone.', async () => {
+        confirmDialog('Delete this message? This cannot be undone.', async () => {
           const res = await fetch(`/api/feedback/${id}`, { method: 'DELETE' });
           if (res.ok) {
             items = items.filter(x => x.id !== id);
             render();
           } else {
-            alert('Failed to delete feedback.');
+            alert('Failed to delete message.');
           }
         }, 'Delete');
       });
@@ -2134,21 +2134,23 @@ async function initAnnouncementsPage() {
   await loadAnnouncements();
 }
 
-// ─── Feedback ───────────────────────────────────────────────────────────────
+// ─── Contact Us ─────────────────────────────────────────────────────────────
+// Backend stays /api/feedback (unchanged) — only the page-facing name/route
+// were renamed to "Contact Us".
 
-function initFeedbackPage() {
-  const form = document.getElementById('feedbackForm');
+function initContactPage() {
+  const form = document.getElementById('contactForm');
   if (!form) return;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errEl = document.getElementById('feedbackFormError');
+    const errEl = document.getElementById('contactFormError');
     errEl.hidden = true;
 
-    const message = document.getElementById('feedbackMessage').value.trim();
+    const message = document.getElementById('contactMessage').value.trim();
     if (!message) { errEl.textContent = 'Please enter a message before sending.'; errEl.hidden = false; return; }
 
-    const submitBtn = document.getElementById('feedbackFormSubmit');
+    const submitBtn = document.getElementById('contactFormSubmit');
     submitBtn.disabled = true;
     try {
       const res = await fetch('/api/feedback', {
@@ -2157,12 +2159,12 @@ function initFeedbackPage() {
         body: JSON.stringify({ message }),
       });
       const data = await res.json();
-      if (!res.ok) { errEl.textContent = data.error || 'Failed to send feedback.'; errEl.hidden = false; return; }
+      if (!res.ok) { errEl.textContent = data.error || 'Failed to send message.'; errEl.hidden = false; return; }
 
-      document.getElementById('feedbackFormWrap').innerHTML =
-        `<p class="card-desc">Thanks — your feedback has been sent.</p>`;
+      document.getElementById('contactFormWrap').innerHTML =
+        `<p class="card-desc">Thanks — your message has been sent.</p>`;
     } catch {
-      errEl.textContent = 'Failed to send feedback. Please try again.';
+      errEl.textContent = 'Failed to send message. Please try again.';
       errEl.hidden = false;
     } finally {
       submitBtn.disabled = false;
@@ -3044,8 +3046,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initInstructorPanel();
   } else if (window.location.pathname === '/admin') {
     initAdminPanel();
-  } else if (window.location.pathname === '/feedback') {
-    initFeedbackPage();
+  } else if (window.location.pathname === '/contact') {
+    initContactPage();
   } else if (window.location.pathname === '/student-hub') {
     initStudentHubPage();
   }
