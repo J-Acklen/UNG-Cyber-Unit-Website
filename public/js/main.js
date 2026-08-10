@@ -674,12 +674,15 @@ function updateAuthNav() {
     </div>`;
 
   if (currentUser) {
-    const displayName = currentUser.role === 'guest' ? 'Guest' : currentUser.username;
+    const isGuest = currentUser.role === 'guest';
+    const displayName = isGuest ? 'Guest' : currentUser.username;
     navItem.innerHTML = `
       ${menuBtn}
       <a href="/profile" class="navbar-username" aria-label="View your profile"><img src="${escHtml(currentUser.avatar || DEFAULT_AVATAR)}" alt="" class="navbar-avatar">${escHtml(displayName)}</a>
+      ${isGuest ? `<button class="btn btn-sm" id="saveProgressBtn">Save Progress</button>` : ''}
       <button class="btn btn-sm" id="logoutBtn">Sign Out</button>`;
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    document.getElementById('saveProgressBtn')?.addEventListener('click', openUpgradeModal);
   } else {
     navItem.innerHTML = `
       ${menuBtn}
@@ -778,8 +781,33 @@ function openAuthModal(tab) {
   if (!modal) return;
   modal.hidden = false;
   setAuthTab(tab ?? 'login');
+  setRegisterFormMode('register');
   const focusId = tab === 'register' ? 'regUsername' : 'loginUsername';
   document.getElementById(focusId)?.focus();
+}
+
+// Guests hit this from the "Save Progress" nav button: skip straight to the
+// register form (their guest session already exists — signing in as someone
+// else or "continuing as guest" again both make no sense here), and submit
+// to /api/auth/upgrade instead of /api/auth/register so the account is
+// converted in place rather than created fresh.
+function openUpgradeModal() {
+  const modal = document.getElementById('authModal');
+  if (!modal) return;
+  modal.hidden = false;
+  setAuthTab('register');
+  setRegisterFormMode('upgrade');
+  document.getElementById('regUsername')?.focus();
+}
+
+function setRegisterFormMode(mode) {
+  const isUpgrade = mode === 'upgrade';
+  document.getElementById('registerForm')?.setAttribute('data-mode', mode);
+  document.getElementById('authModalTabs')?.toggleAttribute('hidden', isUpgrade);
+  document.getElementById('upgradeIntro')?.toggleAttribute('hidden', !isUpgrade);
+  document.getElementById('authModalGuestSection')?.toggleAttribute('hidden', isUpgrade);
+  const submitBtn = document.getElementById('registerSubmitBtn');
+  if (submitBtn) submitBtn.textContent = isUpgrade ? 'Save Progress' : 'Create Account';
 }
 
 function closeAuthModal() {
@@ -823,10 +851,11 @@ function injectAuthModal() {
   modal.innerHTML = `
     <div class="modal">
       <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
-      <div class="modal-tabs" role="tablist" aria-label="Authentication mode">
+      <div class="modal-tabs" id="authModalTabs" role="tablist" aria-label="Authentication mode">
         <button class="modal-tab active" role="tab" aria-selected="true" data-tab="login">Sign In</button>
         <button class="modal-tab" role="tab" aria-selected="false" data-tab="register">Register</button>
       </div>
+      <p class="form-hint" id="upgradeIntro" style="margin:-0.75rem 0 1rem" hidden>Create an account to save your guest progress — your quiz scores and streak carry over.</p>
       <form id="loginForm" class="modal-form" novalidate>
         <div class="form-group">
           <label for="loginUsername">Username</label>
@@ -858,7 +887,7 @@ function injectAuthModal() {
           <input type="password" id="regPasswordConfirm" autocomplete="new-password" required minlength="8">
         </div>
         <p class="form-error" id="registerError" aria-live="polite" hidden></p>
-        <button type="submit" class="btn" style="width:100%;margin-top:0.25rem">Create Account</button>
+        <button type="submit" class="btn" id="registerSubmitBtn" style="width:100%;margin-top:0.25rem">Create Account</button>
       </form>
       <div id="forgotForm" class="modal-form" hidden>
         <div class="form-group">
@@ -972,6 +1001,8 @@ function handleForgotPassword() {
 
 async function handleRegister(e) {
   e.preventDefault();
+  const isUpgrade = document.getElementById('registerForm')?.dataset.mode === 'upgrade';
+  const endpoint  = isUpgrade ? '/api/auth/upgrade' : '/api/auth/register';
   const username = document.getElementById('regUsername').value.trim();
   const password = document.getElementById('regPassword').value;
   const confirm  = document.getElementById('regPasswordConfirm').value;
@@ -983,13 +1014,13 @@ async function handleRegister(e) {
     return;
   }
   try {
-    const res  = await fetch('/api/auth/register', {
+    const res  = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Registration failed.'; errEl.hidden = false; return; }
+    if (!res.ok) { errEl.textContent = data.error || (isUpgrade ? 'Could not save your progress.' : 'Registration failed.'); errEl.hidden = false; return; }
     currentUser = data;
     closeAuthModal();
     updateAuthNav();

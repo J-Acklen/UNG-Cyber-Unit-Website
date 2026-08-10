@@ -1829,6 +1829,43 @@ export default {
         );
       }
 
+      // POST /api/auth/upgrade — convert the caller's own guest account into a
+      // real member account in place (same row, same id), so quiz_results and
+      // streak carry over automatically with no separate data-migration step.
+      if (path === '/api/auth/upgrade' && request.method === 'POST') {
+        if (!env.DB) return jsonResponse({ error: 'Database not configured' }, 503);
+        const session = await getSession(request, env.JWT_SECRET);
+        if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
+        if (session.role !== 'guest') return jsonResponse({ error: 'Only guest accounts can be upgraded' }, 403);
+
+        const limited = await checkSignupLimit(env, request);
+        if (limited) return limited;
+
+        let body;
+        try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
+        const { username, password } = body ?? {};
+        if (!username || !password) return jsonResponse({ error: 'Username and password required' }, 400);
+        if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) return jsonResponse({ error: 'Username must be 3–20 alphanumeric characters or underscores' }, 400);
+        if (typeof password !== 'string' || password.length < 8) return jsonResponse({ error: 'Password must be at least 8 characters' }, 400);
+        if (password.length > 128) return jsonResponse({ error: 'Password too long' }, 400);
+
+        const existing = await env.DB.prepare('SELECT id FROM users WHERE username = ? AND id != ?').bind(username, session.sub).first();
+        if (existing) return jsonResponse({ error: 'Username already taken' }, 409);
+
+        const hash = await hashPassword(password);
+        const info = await env.DB.prepare(
+          `UPDATE users SET username = ?, password_hash = ?, role = 'member' WHERE id = ? AND role = 'guest'`
+        ).bind(username, hash, session.sub).run();
+        if (info.meta.changes === 0) return jsonResponse({ error: 'Guest session no longer valid' }, 409);
+
+        const token = await signJWT(
+          { sub: session.sub, username, role: 'member', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
+          env.JWT_SECRET
+        );
+        await recordSignup(env, request);
+        return jsonResponse({ id: session.sub, username, role: 'member' }, 200, { 'Set-Cookie': sessionCookie(token, 7 * 24 * 3600, secureCookie) });
+      }
+
       // GET /api/auth/me
       if (path === '/api/auth/me' && request.method === 'GET') {
         const session = await getSession(request, env.JWT_SECRET);

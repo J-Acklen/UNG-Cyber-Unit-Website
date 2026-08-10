@@ -1834,6 +1834,7 @@ footer {
   border-bottom: 1px solid var(--border);
   margin-bottom: 1.5rem;
 }
+.modal-tabs[hidden] { display: none; }
 
 .modal-tab {
   background: none;
