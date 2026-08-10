@@ -2275,9 +2275,10 @@ export default {
 
     // GET /api/user/:username — the public subset of a profile, for other
     // logged-in users viewing /u/:username. Whitelisted fields only, and only
-    // when the target has opted in via is_public. Never exposes quiz-room
-    // history, per-topic quiz progress, or the verified email address itself
-    // — only the resulting isStudent badge — even when public.
+    // when the target has opted in via is_public — except for admins, who can
+    // open any profile from the admin panel regardless of that toggle. Never
+    // exposes quiz-room history, per-topic quiz progress, or the verified
+    // email address itself — only the resulting isStudent badge — even to admins.
     const publicUserMatch = path.match(/^\/api\/user\/([a-zA-Z0-9_]{3,20})$/);
     if (publicUserMatch && request.method === 'GET') {
       if (!env.DB) return jsonResponse({ error: 'Server not configured' }, 503);
@@ -2285,7 +2286,8 @@ export default {
         'SELECT id, username, role, avatar, created_at, is_public FROM users WHERE username = ?'
       ).bind(publicUserMatch[1]).first();
       if (!target || target.role === 'guest') return jsonResponse({ error: 'User not found' }, 404);
-      if (!target.is_public) return jsonResponse({ error: 'This profile is private' }, 403);
+      const viewer = env.JWT_SECRET ? await getSession(request, env.JWT_SECRET) : null;
+      if (!target.is_public && viewer?.role !== 'admin') return jsonResponse({ error: 'This profile is private' }, 403);
 
       const { results: prog } = await env.DB.prepare(
         'SELECT topic_id FROM quiz_results WHERE user_id = ?'

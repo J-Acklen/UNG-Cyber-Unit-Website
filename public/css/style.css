@@ -2130,6 +2130,11 @@ footer {
 .admin-table th.sort-desc::after { content: ' ↓'; opacity: 1; color: var(--accent); }
 .admin-table th.sort-asc,
 .admin-table th.sort-desc { color: var(--accent); }
+.admin-user-link {
+  color: var(--text);
+  text-decoration: none;
+}
+.admin-user-link:hover { color: var(--accent); text-decoration: underline; }
 .role-select {
   background: var(--bg);
   border: 1px solid var(--border);

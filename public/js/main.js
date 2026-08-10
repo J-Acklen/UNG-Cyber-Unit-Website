@@ -1080,7 +1080,7 @@ async function initAdminPanel() {
             const joined = new Date(u.created_at).toLocaleDateString();
             return `
               <tr data-uid="${u.id}">
-                <td style="font-family:'Share Tech Mono',monospace;">${escHtml(u.username)}</td>
+                <td style="font-family:'Share Tech Mono',monospace;"><a href="/u/${encodeURIComponent(u.username)}" class="admin-user-link">${escHtml(u.username)}</a></td>
                 <td>
                   <select class="role-select" data-uid="${u.id}" ${isSelf ? 'disabled' : ''} aria-label="Role for ${escHtml(u.username)}">
                     <option value="member"     ${u.role === 'member'     ? 'selected' : ''}>member</option>
