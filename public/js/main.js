@@ -690,7 +690,16 @@ function updateAuthNav() {
   wireNavDropdown('navMenuBtn', 'navMenuList');
 }
 
-async function handleGuestLogin() {
+function handleGuestLogin() {
+  confirmDialog(
+    'Guest sessions expire after 2 hours, and any progress you make will be lost when they do. Create an account to keep your progress.',
+    startGuestSession,
+    'Continue as Guest',
+    { danger: false }
+  );
+}
+
+async function startGuestSession() {
   try {
     const res = await fetch('/api/auth/guest', { method: 'POST' });
     if (!res.ok) throw new Error();
