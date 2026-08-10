@@ -1432,6 +1432,12 @@ function sessionCookie(token, maxAge, secure = true) {
   return `session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
 }
 
+// Guest sessions are short-lived (capped well below members' 7d) since guest
+// accounts are throwaway, permissionless, and created with no rate limit
+// beyond the shared signup limiter — bounding their lifetime bounds the
+// window any one of them can pollute the leaderboard/DB.
+const GUEST_SESSION_SECONDS = 2 * 3600;
+
 // Role lives in the JWT, not re-checked against the DB on every request. If a
 // DB role change (e.g. a student email just got verified) has moved past what
 // this session's cookie was issued with, transparently reissue the cookie —
@@ -1812,14 +1818,14 @@ export default {
         ).bind(username, hash, Date.now()).run();
 
         const token = await signJWT(
-          { sub: result.meta.last_row_id, username, role: 'guest', exp: Math.floor(Date.now() / 1000) + 24 * 3600 },
+          { sub: result.meta.last_row_id, username, role: 'guest', exp: Math.floor(Date.now() / 1000) + GUEST_SESSION_SECONDS },
           env.JWT_SECRET
         );
         await recordSignup(env, request);
         return jsonResponse(
           { id: result.meta.last_row_id, username, role: 'guest' },
           201,
-          { 'Set-Cookie': sessionCookie(token, 24 * 3600, secureCookie) },
+          { 'Set-Cookie': sessionCookie(token, GUEST_SESSION_SECONDS, secureCookie) },
         );
       }
 
