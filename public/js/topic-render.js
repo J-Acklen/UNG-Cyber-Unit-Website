@@ -16,7 +16,7 @@ export function escapeHtml(str) {
 export function renderContent(topic) {
   const sectionsHtml = topic.fullContent.sections.map((section, index) => {
     let html = `<div class="content-section" id="section-${index}">
-      <h3>${section.heading}</h3>`;
+      <h3>${escapeHtml(section.heading)}</h3>`;
 
     if (section.body) {
       html += `<p>${section.body}</p>`;
@@ -93,12 +93,12 @@ export function renderContent(topic) {
   // Beginner framing: a mentor-voice "why this matters" hook up top, and a
   // plain-English key takeaway at the bottom. Both are optional per topic.
   const hook = topic.hook
-    ? `<div class="topic-hook">${topic.hook}</div>`
+    ? `<div class="topic-hook">${escapeHtml(topic.hook)}</div>`
     : '';
   const takeaway = topic.takeaway
     ? `<div class="topic-takeaway">
          <span class="topic-takeaway-label">🎯 Key Takeaway</span>
-         <p>${topic.takeaway}</p>
+         <p>${escapeHtml(topic.takeaway)}</p>
        </div>`
     : '';
   return hook + sectionsHtml + takeaway;
@@ -129,10 +129,10 @@ function renderThreatCards(threats) {
   return `<div class="threat-grid" role="list">
     ${threats.map(t => `
       <div class="threat-card" role="listitem">
-        <div class="threat-icon" aria-hidden="true">${t.icon}</div>
+        <div class="threat-icon" aria-hidden="true">${escapeHtml(t.icon)}</div>
         <div>
-          <h4>${t.name}</h4>
-          <p>${t.desc}</p>
+          <h4>${escapeHtml(t.name)}</h4>
+          <p>${escapeHtml(t.desc)}</p>
         </div>
       </div>`).join('')}
   </div>`;
@@ -211,10 +211,10 @@ function renderCareers(careers) {
     <div class="career-grid" role="list">
       ${careers.map(c => `
         <div class="career-card" role="listitem">
-          <div class="career-icon" aria-hidden="true">${c.icon}</div>
+          <div class="career-icon" aria-hidden="true">${escapeHtml(c.icon)}</div>
           <div>
-            <h4>${c.title}</h4>
-            <p>${c.desc}</p>
+            <h4>${escapeHtml(c.title)}</h4>
+            <p>${escapeHtml(c.desc)}</p>
           </div>
         </div>`).join('')}
     </div>`;
@@ -224,10 +224,10 @@ function renderResources(resources) {
   return `
     <div class="resource-list" role="list">
       ${resources.map(r => `
-        <a href="${r.url}" target="_blank" rel="noopener noreferrer" class="resource-link" role="listitem" aria-label="${r.name}: ${r.desc}">
+        <a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer" class="resource-link" role="listitem" aria-label="${escapeHtml(r.name)}: ${escapeHtml(r.desc)}">
           <div>
-            <h4>${r.name}</h4>
-            <p>${r.desc}</p>
+            <h4>${escapeHtml(r.name)}</h4>
+            <p>${escapeHtml(r.desc)}</p>
           </div>
           <span class="link-arrow" aria-hidden="true">↗</span>
         </a>`).join('')}
@@ -240,13 +240,13 @@ function renderCallout({ type, text }) {
 
 function renderCommandGroups(groups) {
   return groups.map(g => `
-    <div class="cmd-group" role="region" aria-label="${g.group}">
-      <div class="cmd-group-title">${g.group}</div>
-      <div class="cmd-table" role="table" aria-label="${g.group} commands">
+    <div class="cmd-group" role="region" aria-label="${escapeHtml(g.group)}">
+      <div class="cmd-group-title">${escapeHtml(g.group)}</div>
+      <div class="cmd-table" role="table" aria-label="${escapeHtml(g.group)} commands">
         ${g.cmds.map(c => `
           <div class="cmd-row" role="row">
             <code class="cmd-cell" role="cell">${escapeHtml(c.cmd)}</code>
-            <span class="cmd-desc" role="cell">${c.desc}</span>
+            <span class="cmd-desc" role="cell">${escapeHtml(c.desc)}</span>
           </div>`).join('')}
       </div>
     </div>`).join('');

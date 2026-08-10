@@ -125,3 +125,12 @@ CREATE TABLE IF NOT EXISTS email_action_rate_limit (
   ts INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_earl_ip_ts ON email_action_rate_limit (ip, ts);
+
+-- Sliding-window rate limit for account creation (register + guest), shared
+-- table since both are unauthenticated and equally cheap to spam.
+CREATE TABLE IF NOT EXISTS signup_rate_limit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT    NOT NULL,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_srl_ip_ts ON signup_rate_limit (ip, ts);

@@ -513,6 +513,7 @@ function renderQuiz(questions, topicId = null) {
   let answered = 0;
   let correct  = 0;
   const total  = questions.length;
+  const selected = new Array(total).fill(-1);
 
   container.innerHTML = questions.map((q, qi) => `
     <div class="quiz-box" id="quiz-${qi}">
@@ -539,6 +540,7 @@ function renderQuiz(questions, topicId = null) {
       box.querySelectorAll('.quiz-option').forEach(b => { b.disabled = true; });
 
       const isCorrect = ai === q.correct;
+      selected[qi] = ai;
       btn.classList.add(isCorrect ? 'correct' : 'wrong');
 
       if (!isCorrect) {
@@ -581,7 +583,7 @@ function renderQuiz(questions, topicId = null) {
     scoreEl.style.display = 'block';
     scoreEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    if (topicId) saveProgress(topicId, correct, total);
+    if (topicId) saveProgress(topicId, selected);
 
     tryAgain.addEventListener('click', () => {
       scoreEl.style.display = 'none';
@@ -991,13 +993,13 @@ async function handleRegister(e) {
 
 // ─── Progress ─────────────────────────────────────────────────────────────────
 
-async function saveProgress(topicId, score, total) {
+async function saveProgress(topicId, answers) {
   if (!currentUser) return;
   try {
     await fetch(`/api/progress/${topicId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ score, total }),
+      body: JSON.stringify({ answers }),
     });
   } catch { /* don't disrupt the user experience */ }
 }

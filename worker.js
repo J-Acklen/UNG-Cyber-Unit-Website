@@ -1428,8 +1428,8 @@ async function getSession(request, secret) {
   return cookies.session ? verifyJWT(cookies.session, secret) : null;
 }
 
-function sessionCookie(token, maxAge) {
-  return `session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+function sessionCookie(token, maxAge, secure = true) {
+  return `session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
 }
 
 // Role lives in the JWT, not re-checked against the DB on every request. If a
@@ -1437,13 +1437,13 @@ function sessionCookie(token, maxAge) {
 // this session's cookie was issued with, transparently reissue the cookie —
 // called from the two endpoints every page already polls on load
 // (/api/auth/me, /api/profile) so sessions self-heal without a re-login.
-async function refreshRoleIfStale(env, session, dbRole) {
+async function refreshRoleIfStale(env, session, dbRole, secure = true) {
   if (!dbRole || dbRole === session.role) return { role: session.role ?? 'member', cookie: null };
   const token = await signJWT(
     { sub: session.sub, username: session.username, role: dbRole, exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
     env.JWT_SECRET
   );
-  return { role: dbRole, cookie: sessionCookie(token, 7 * 24 * 3600) };
+  return { role: dbRole, cookie: sessionCookie(token, 7 * 24 * 3600, secure) };
 }
 
 // ─── Role Helpers ─────────────────────────────────────────────────────────────
@@ -1530,6 +1530,31 @@ async function recordFeedbackSubmission(env, request) {
     .bind(clientIP(request), now).run();
   // Opportunistically prune expired rows so the table stays small.
   await env.DB.prepare('DELETE FROM feedback_rate_limit WHERE ts < ?').bind(now - FEEDBACK_RL_WINDOW_MS).run();
+}
+
+const SIGNUP_RL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const SIGNUP_RL_MAX = 10;                   // account creations (register + guest) per IP per window
+
+// Returns a 429 Response when this IP is over the limit, otherwise null.
+async function checkSignupLimit(env, request) {
+  if (!env.DB) return null;
+  const cutoff = Date.now() - SIGNUP_RL_WINDOW_MS;
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM signup_rate_limit WHERE ip = ? AND ts > ?'
+  ).bind(clientIP(request), cutoff).first();
+  if ((row?.n ?? 0) >= SIGNUP_RL_MAX) {
+    return jsonResponse({ error: 'Too many accounts created recently. Please wait a while and try again.' }, 429);
+  }
+  return null;
+}
+
+async function recordSignup(env, request) {
+  if (!env.DB) return;
+  const now = Date.now();
+  await env.DB.prepare('INSERT INTO signup_rate_limit (ip, ts) VALUES (?, ?)')
+    .bind(clientIP(request), now).run();
+  // Opportunistically prune expired rows so the table stays small.
+  await env.DB.prepare('DELETE FROM signup_rate_limit WHERE ts < ?').bind(now - SIGNUP_RL_WINDOW_MS).run();
 }
 
 const EMAIL_ACTION_RL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -1702,6 +1727,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
+    // Cookies get the Secure flag whenever the request itself arrived over
+    // HTTPS (always true in prod; `wrangler dev` defaults to plain HTTP, so
+    // this keeps local login working without a Secure cookie the browser
+    // would silently refuse to store).
+    const secureCookie = url.protocol === 'https:';
 
     // ── Auth & Progress API ──────────────────────────────────────────────────
     if (path.startsWith('/api/auth/') || path.startsWith('/api/progress')) {
@@ -1710,6 +1740,8 @@ export default {
       // POST /api/auth/register
       if (path === '/api/auth/register' && request.method === 'POST') {
         if (!env.DB) return jsonResponse({ error: 'Database not configured' }, 503);
+        const limited = await checkSignupLimit(env, request);
+        if (limited) return limited;
         let body;
         try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
         const { username, password } = body ?? {};
@@ -1730,7 +1762,8 @@ export default {
           { sub: result.meta.last_row_id, username, role: 'member', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
           env.JWT_SECRET
         );
-        return jsonResponse({ id: result.meta.last_row_id, username, role: 'member' }, 201, { 'Set-Cookie': sessionCookie(token, 7 * 24 * 3600) });
+        await recordSignup(env, request);
+        return jsonResponse({ id: result.meta.last_row_id, username, role: 'member' }, 201, { 'Set-Cookie': sessionCookie(token, 7 * 24 * 3600, secureCookie) });
       }
 
       // POST /api/auth/login
@@ -1753,12 +1786,12 @@ export default {
           { sub: user.id, username: user.username, role, exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
           env.JWT_SECRET
         );
-        return jsonResponse({ id: user.id, username: user.username, role }, 200, { 'Set-Cookie': sessionCookie(token, 7 * 24 * 3600) });
+        return jsonResponse({ id: user.id, username: user.username, role }, 200, { 'Set-Cookie': sessionCookie(token, 7 * 24 * 3600, secureCookie) });
       }
 
       // POST /api/auth/logout
       if (path === '/api/auth/logout' && request.method === 'POST') {
-        return jsonResponse({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', 0) });
+        return jsonResponse({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', 0, secureCookie) });
       }
 
       // POST /api/auth/guest — create a temporary, permissionless guest account.
@@ -1766,6 +1799,8 @@ export default {
       // profile/progress work normally, but they can never reach instructor/admin.
       if (path === '/api/auth/guest' && request.method === 'POST') {
         if (!env.DB) return jsonResponse({ error: 'Database not configured' }, 503);
+        const limited = await checkSignupLimit(env, request);
+        if (limited) return limited;
         // Hyphenated name can't collide with real usernames (register allows [a-zA-Z0-9_] only).
         const suffix = Array.from(crypto.getRandomValues(new Uint8Array(6)))
           .map(b => b.toString(16).padStart(2, '0')).join('');
@@ -1780,10 +1815,11 @@ export default {
           { sub: result.meta.last_row_id, username, role: 'guest', exp: Math.floor(Date.now() / 1000) + 24 * 3600 },
           env.JWT_SECRET
         );
+        await recordSignup(env, request);
         return jsonResponse(
           { id: result.meta.last_row_id, username, role: 'guest' },
           201,
-          { 'Set-Cookie': sessionCookie(token, 24 * 3600) },
+          { 'Set-Cookie': sessionCookie(token, 24 * 3600, secureCookie) },
         );
       }
 
@@ -1798,7 +1834,7 @@ export default {
         if (env.DB) {
           const row = await env.DB.prepare('SELECT avatar, last_seen_announcements, role FROM users WHERE id = ?').bind(session.sub).first();
           avatar = row?.avatar ?? null;
-          const refreshed = await refreshRoleIfStale(env, session, row?.role);
+          const refreshed = await refreshRoleIfStale(env, session, row?.role, secureCookie);
           role = refreshed.role;
           if (refreshed.cookie) extraHeaders = { 'Set-Cookie': refreshed.cookie };
           // Guests can't view /announcements at all, so never flag them as unread.
@@ -2060,7 +2096,7 @@ export default {
           status: 302,
           headers: addSecurityHeaders(new Headers({
             'Location': `${url.origin}/profile?reset=1`,
-            'Set-Cookie': sessionCookie(sessionToken, 7 * 24 * 3600),
+            'Set-Cookie': sessionCookie(sessionToken, 7 * 24 * 3600, secureCookie),
           })),
         });
       }
@@ -2132,11 +2168,20 @@ export default {
         if (!session) return jsonResponse({ error: 'Not authenticated' }, 401);
         let body;
         try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid request body' }, 400); }
-        const { score, total } = body ?? {};
-        if (typeof score !== 'number' || typeof total !== 'number' || score < 0 || total < 1 || score > total) {
-          return jsonResponse({ error: 'Invalid score data' }, 400);
-        }
         const topicId = progressMatch[1];
+        const topic = topics.find(t => t.id === topicId);
+        if (!topic || !Array.isArray(topic.quiz) || topic.quiz.length === 0) {
+          return jsonResponse({ error: 'Unknown topic' }, 404);
+        }
+        const { answers } = body ?? {};
+        if (!Array.isArray(answers) || answers.length !== topic.quiz.length) {
+          return jsonResponse({ error: 'Invalid answers data' }, 400);
+        }
+        const total = topic.quiz.length;
+        const score = topic.quiz.reduce(
+          (sum, q, i) => sum + (Number.isInteger(answers[i]) && answers[i] === q.correct ? 1 : 0),
+          0
+        );
         // Upsert: keep the best (highest) score the user has achieved
         await env.DB.prepare(`
           INSERT INTO quiz_results (user_id, topic_id, score, total, updated_at)
@@ -2170,7 +2215,7 @@ export default {
       ).bind(session.sub).first();
       if (!user) return jsonResponse({ error: 'Not authenticated' }, 401);
 
-      const { role, cookie } = await refreshRoleIfStale(env, session, user.role);
+      const { role, cookie } = await refreshRoleIfStale(env, session, user.role, secureCookie);
       const profileExtraHeaders = cookie ? { 'Set-Cookie': cookie } : {};
 
       const { results: roomAttempts } = await env.DB.prepare(`
