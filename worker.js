@@ -3364,9 +3364,10 @@ export default {
     return notFoundResponse();
   },
 
-  // Cron Trigger: prune expired brute-force rate-limit rows. Failed lookups
-  // already self-prune on write, so this just clears residual rows once traffic
-  // stops. Schedule is defined in wrangler.toml ([triggers] crons).
+  // Cron Trigger: prune expired brute-force rate-limit rows and abandoned
+  // guest accounts. Rate-limit tables already self-prune on write, so that
+  // part just clears residual rows once traffic stops. Schedule is defined
+  // in wrangler.toml ([triggers] crons).
   async scheduled(event, env, ctx) {
     if (!env.DB) return;
     ctx.waitUntil(
@@ -3383,6 +3384,42 @@ export default {
       env.DB.prepare('DELETE FROM email_action_rate_limit WHERE ts < ?')
         .bind(Date.now() - EMAIL_ACTION_RL_WINDOW_MS)
         .run()
+    );
+    ctx.waitUntil(
+      env.DB.prepare('DELETE FROM signup_rate_limit WHERE ts < ?')
+        .bind(Date.now() - SIGNUP_RL_WINDOW_MS)
+        .run()
+    );
+
+    // Guest accounts that never upgraded (see /api/auth/upgrade) are dead
+    // weight once their session has expired — nothing can log back into
+    // them (guests have no password), so they'd otherwise sit in the DB
+    // forever. Batched (one transaction, ordered child-tables-first) so a
+    // guest mid-upgrade can't be deleted out from under that request — by
+    // the time this runs their role is already 'member' and the WHERE
+    // excludes them regardless.
+    const guestCutoff = Date.now() - GUEST_SESSION_SECONDS * 1000;
+    ctx.waitUntil(
+      env.DB.batch([
+        env.DB.prepare(`
+          DELETE FROM quiz_room_answers WHERE attempt_id IN (
+            SELECT id FROM quiz_room_attempts WHERE user_id IN (
+              SELECT id FROM users WHERE role = 'guest' AND created_at < ?
+            )
+          )
+        `).bind(guestCutoff),
+        env.DB.prepare(`
+          DELETE FROM quiz_room_attempts WHERE user_id IN (
+            SELECT id FROM users WHERE role = 'guest' AND created_at < ?
+          )
+        `).bind(guestCutoff),
+        env.DB.prepare(`
+          DELETE FROM quiz_results WHERE user_id IN (
+            SELECT id FROM users WHERE role = 'guest' AND created_at < ?
+          )
+        `).bind(guestCutoff),
+        env.DB.prepare(`DELETE FROM users WHERE role = 'guest' AND created_at < ?`).bind(guestCutoff),
+      ])
     );
   },
 };
