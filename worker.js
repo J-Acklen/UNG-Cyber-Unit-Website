@@ -1445,6 +1445,16 @@ const GUEST_SESSION_SECONDS = 2 * 3600;
 // (/api/auth/me, /api/profile) so sessions self-heal without a re-login.
 async function refreshRoleIfStale(env, session, dbRole, secure = true) {
   if (!dbRole || dbRole === session.role) return { role: session.role ?? 'member', cookie: null };
+  // Never self-heal a guest token into a longer-lived non-guest cookie. A
+  // guest JWT is only ever meant to live for its original short window
+  // (GUEST_SESSION_SECONDS) — if this account was since upgraded via
+  // /api/auth/upgrade, the browser that did the upgrade already got a fresh
+  // member cookie directly from that response. This path is only reachable
+  // by a *stale* copy of the old guest token (e.g. one captured before the
+  // upgrade), so minting it a fresh 7-day cookie here would let a stolen
+  // throwaway guest session outlive its cap by riding the account's later
+  // upgrade. Keep it pinned at guest until it naturally expires.
+  if (session.role === 'guest') return { role: 'guest', cookie: null };
   const token = await signJWT(
     { sub: session.sub, username: session.username, role: dbRole, exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
     env.JWT_SECRET
