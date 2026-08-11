@@ -4,6 +4,9 @@
 # Dependencies
 node_modules/
 
+# Local wrangler dev state (D1 sqlite, etc.)
+.wrangler/
+
 # Environment variables
 .env
 .env.local
