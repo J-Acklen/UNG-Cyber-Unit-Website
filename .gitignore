@@ -31,6 +31,11 @@ Thumbs.db
 # Security audit documents
 ungcyberunit_security_remediation.md
 
+# Proposed-but-not-yet-built feature/curriculum plans — kept local until
+# acted on. docs/public-profile-plan.md is tracked (already built), so it
+# deliberately doesn't match this pattern.
+docs/plan-*.md
+
 # Build output (if added later)
 dist/
 build/
