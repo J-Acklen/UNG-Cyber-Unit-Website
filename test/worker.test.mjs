@@ -59,7 +59,8 @@ function mockDB() {
   const calls = [];
   // Statements can be executed with or without .bind() (D1 allows both).
   const exec = (sql, bindings) => ({
-    run:   async () => { calls.push({ sql, bindings, op: 'run' });   return { meta: { last_row_id: 1 } }; },
+    sql, bindings,
+    run:   async () => { calls.push({ sql, bindings, op: 'run' });   return { meta: { last_row_id: 1, changes: 1 } }; },
     first: async () => { calls.push({ sql, bindings, op: 'first' }); return null; },
     all:   async () => { calls.push({ sql, bindings, op: 'all' });   return { results: [] }; },
   });
@@ -67,6 +68,13 @@ function mockDB() {
     calls,
     prepare(sql) {
       return { bind: (...bindings) => exec(sql, bindings), ...exec(sql, null) };
+    },
+    // env.DB.batch(stmts): D1 runs already-bound statements as one ordered
+    // transaction. The mock just records which statements were included, in
+    // order, so a test can assert the cascade shape without a real DB.
+    async batch(stmts) {
+      calls.push({ op: 'batch', sqls: stmts.map(s => s.sql), bindings: stmts.map(s => s.bindings) });
+      return stmts.map(() => ({ meta: { changes: 0 } }));
     },
   };
 }
@@ -129,6 +137,54 @@ function mockMeDB({ lastSeen = null, latestAnnouncement = null } = {}) {
         return null;
       };
       return { bind: () => ({ first }), first };
+    },
+  };
+}
+
+// A mock D1 for exercising refreshRoleIfStale via /api/auth/me or /api/profile:
+// reports a fixed current DB role for the session's user id, independent of
+// what role the caller's JWT claims.
+function mockRoleRefreshDB(dbRole) {
+  return {
+    prepare(sql) {
+      const first = async () => {
+        if (/SELECT avatar, last_seen_announcements, role/.test(sql)) return { avatar: null, last_seen_announcements: null, role: dbRole };
+        if (/SELECT id, username, role, avatar, created_at, is_public, email, email_pending/.test(sql)) {
+          return { id: 1, username: 'alice', role: dbRole, avatar: null, created_at: 1000, is_public: 0, email: null, email_pending: null };
+        }
+        if (/MAX\(created_at\)/.test(sql)) return { latest: null };
+        return null;
+      };
+      return { bind: () => ({ first, all: async () => ({ results: [] }) }), first };
+    },
+  };
+}
+
+// A mock D1 for POST /api/auth/upgrade: resolves the username-uniqueness
+// check and lets a test force the guest-row UPDATE to affect 0 rows (models
+// an already-upgraded / raced-out guest session).
+function mockUpgradeDB({ usernameTaken = false, updateChanges = 1 } = {}) {
+  const calls = [];
+  return {
+    calls,
+    prepare(sql) {
+      return {
+        bind: (...bindings) => ({
+          first: async () => {
+            calls.push({ sql, bindings, op: 'first' });
+            if (/SELECT id FROM users WHERE username = \? AND id != \?/.test(sql)) {
+              return usernameTaken ? { id: 999 } : null;
+            }
+            return null; // signup rate-limit count query -> not limited
+          },
+          run: async () => {
+            calls.push({ sql, bindings, op: 'run' });
+            if (/UPDATE users SET username/.test(sql)) return { meta: { changes: updateChanges } };
+            return { meta: { last_row_id: 1, changes: 1 } };
+          },
+          all: async () => ({ results: [] }),
+        }),
+      };
     },
   };
 }
@@ -1134,6 +1190,218 @@ describe('POST /api/profile/visibility', () => {
   });
 });
 
+// ─── POST /api/auth/guest ────────────────────────────────────────────────────────
+
+describe('POST /api/auth/guest', () => {
+  const post = (url = 'https://example.com/api/auth/guest') => worker.fetch(
+    new Request(url, { method: 'POST' }),
+    { JWT_SECRET: SECRET, DB: mockDB() },
+  );
+
+  test('should create a guest account with a 2-hour (not 24-hour) session', async () => {
+    const res = await post();
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    assert.equal(data.role, 'guest');
+    assert.match(res.headers.get('Set-Cookie'), /Max-Age=7200/);
+  });
+
+  test('should set the Secure cookie flag when the request arrived over HTTPS', async () => {
+    const res = await post('https://example.com/api/auth/guest');
+    assert.match(res.headers.get('Set-Cookie'), /Secure/);
+  });
+
+  test('should omit the Secure cookie flag over plain HTTP (local dev)', async () => {
+    const res = await post('http://example.com/api/auth/guest');
+    assert.doesNotMatch(res.headers.get('Set-Cookie'), /Secure/);
+  });
+});
+
+// ─── POST /api/auth/upgrade (guest → real account, in place) ────────────────────
+
+describe('POST /api/auth/upgrade', () => {
+  const post = (body, cookie, db) => worker.fetch(
+    new Request('https://example.com/api/auth/upgrade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(body),
+    }),
+    { JWT_SECRET: SECRET, DB: db ?? mockUpgradeDB() },
+  );
+  const guestCookie = () => sessionCookieFor({ sub: 9, username: 'guest-abc', role: 'guest' });
+
+  test('should require a session', async () => {
+    const res = await post({ username: 'real_user', password: 'longenough1' }, null);
+    assert.equal(res.status, 401);
+  });
+
+  test('should reject a non-guest session', async () => {
+    const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+    const res = await post({ username: 'real_user', password: 'longenough1' }, cookie);
+    assert.equal(res.status, 403);
+  });
+
+  test('should reject an invalid username', async () => {
+    const res = await post({ username: 'a b!', password: 'longenough1' }, await guestCookie());
+    assert.equal(res.status, 400);
+  });
+
+  test('should reject a password under 8 characters', async () => {
+    const res = await post({ username: 'real_user', password: 'short' }, await guestCookie());
+    assert.equal(res.status, 400);
+  });
+
+  test('should ignore a client-supplied role (mass-assignment guard)', async () => {
+    const res = await post({ username: 'real_user', password: 'longenough1', role: 'admin' }, await guestCookie());
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).role, 'member');
+  });
+
+  test('should 409 when the chosen username is already taken', async () => {
+    const res = await post({ username: 'taken', password: 'longenough1' }, await guestCookie(), mockUpgradeDB({ usernameTaken: true }));
+    assert.equal(res.status, 409);
+  });
+
+  test('should 409 when the guest row no longer matches (already upgraded / raced out)', async () => {
+    const res = await post({ username: 'real_user', password: 'longenough1' }, await guestCookie(), mockUpgradeDB({ updateChanges: 0 }));
+    assert.equal(res.status, 409);
+  });
+
+  test('should convert the guest row in place: same id, new username, member role, fresh 7-day cookie', async () => {
+    const db = mockUpgradeDB();
+    const res = await post({ username: 'real_user', password: 'longenough1' }, await guestCookie(), db);
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { id: 9, username: 'real_user', role: 'member' });
+    assert.match(res.headers.get('Set-Cookie'), /Max-Age=604800/); // 7d, not the 2h guest cap
+    const update = db.calls.find(c => c.op === 'run' && /UPDATE users SET username/.test(c.sql));
+    assert.match(update.sql, /role = 'guest'/); // WHERE-guarded: can't "upgrade" a non-guest row
+    assert.deepEqual(update.bindings, ['real_user', update.bindings[1], 9]);
+  });
+});
+
+// ─── POST /api/progress/:topicId (server-side quiz scoring) ─────────────────────
+
+describe('POST /api/progress/:topicId', () => {
+  const post = (topicId, body, cookie) => worker.fetch(
+    new Request(`https://example.com/api/progress/${topicId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(body),
+    }),
+    { JWT_SECRET: SECRET, DB: mockDB() },
+  );
+  const memberCookie = () => sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+  const topic01 = topics.find(t => t.id === '01');
+
+  test('should require a session', async () => {
+    const res = await post('01', { answers: [2, 1, 2] }, null);
+    assert.equal(res.status, 401);
+  });
+
+  test('should 404 for an unknown topic id', async () => {
+    const res = await post('99', { answers: [0] }, await memberCookie());
+    assert.equal(res.status, 404);
+  });
+
+  test('should reject the old client-trusted {score,total} body — answers are required now', async () => {
+    const res = await post('01', { score: 3, total: 3 }, await memberCookie());
+    assert.equal(res.status, 400);
+  });
+
+  test('should reject an answers array of the wrong length for the topic', async () => {
+    const res = await post('01', { answers: [0, 0] }, await memberCookie()); // topic 01 has 3 questions
+    assert.equal(res.status, 400);
+  });
+
+  test('should compute a perfect score server-side from the real answer key', async () => {
+    const res = await post('01', { answers: topic01.quiz.map(q => q.correct) }, await memberCookie());
+    assert.equal(res.status, 200);
+  });
+
+  test('should award zero credit even if every submitted answer is wrong (no client-trusted score)', async () => {
+    const db = mockDB();
+    const cookie = await memberCookie();
+    const wrongAnswers = topic01.quiz.map(q => (q.correct + 1) % q.answers.length);
+    const res = await worker.fetch(
+      new Request('https://example.com/api/progress/01', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ answers: wrongAnswers }),
+      }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 200);
+    const insert = db.calls.find(c => c.op === 'run' && /INSERT INTO quiz_results/.test(c.sql));
+    assert.equal(insert.bindings[2], 0); // score
+    assert.equal(insert.bindings[3], topic01.quiz.length); // total
+  });
+});
+
+// ─── refreshRoleIfStale (session self-heal) ──────────────────────────────────────
+
+describe('GET /api/auth/me — role self-heal', () => {
+  test('should self-heal a stale non-guest cookie when the DB role has moved (e.g. an admin promotion)', async () => {
+    const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/auth/me', { headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: mockRoleRefreshDB('instructor') },
+    );
+    assert.equal((await res.json()).role, 'instructor');
+    assert.ok(res.headers.get('Set-Cookie'));
+  });
+
+  test('should NOT self-heal a stale guest cookie even if the account was since upgraded (security fix)', async () => {
+    // Models a guest cookie captured before the user ran /api/auth/upgrade:
+    // the DB row is now role='member', but this stale token must stay
+    // pinned at 'guest' rather than silently minting a fresh 7-day cookie.
+    const cookie = await sessionCookieFor({ sub: 9, username: 'guest-abc', role: 'guest' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/auth/me', { headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: mockRoleRefreshDB('member') },
+    );
+    assert.equal((await res.json()).role, 'guest');
+    assert.equal(res.headers.get('Set-Cookie'), null);
+  });
+});
+
+describe('GET /api/profile — role self-heal', () => {
+  test('should NOT self-heal a stale guest cookie even if the account was since upgraded (security fix)', async () => {
+    const cookie = await sessionCookieFor({ sub: 9, username: 'guest-abc', role: 'guest' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/profile', { headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: mockRoleRefreshDB('member') },
+    );
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).role, 'guest');
+    assert.equal(res.headers.get('Set-Cookie'), null);
+  });
+});
+
+// ─── scheduled() cron: abandoned guest cleanup ───────────────────────────────────
+
+describe('scheduled (cron): abandoned guest cleanup', () => {
+  test('should batch-delete a guest\'s child rows before the user row, scoped to role=guest', async () => {
+    const db = mockDB();
+    const waited = [];
+    await worker.scheduled({}, { DB: db }, { waitUntil: p => waited.push(p) });
+    await Promise.all(waited);
+
+    const batchCall = db.calls.find(c => c.op === 'batch');
+    assert.ok(batchCall, 'expected env.DB.batch to run the guest cleanup');
+    assert.match(batchCall.sqls[0], /DELETE FROM quiz_room_answers/);
+    assert.match(batchCall.sqls[1], /DELETE FROM quiz_room_attempts/);
+    assert.match(batchCall.sqls[2], /DELETE FROM quiz_results/);
+    assert.match(batchCall.sqls[3], /DELETE FROM users WHERE role = 'guest'/);
+    batchCall.sqls.forEach(sql => assert.match(sql, /role = 'guest'/));
+  });
+
+  test('should no-op when there is no DB configured', async () => {
+    let called = false;
+    await worker.scheduled({}, {}, { waitUntil: () => { called = true; } });
+    assert.equal(called, false);
+  });
+});
+
 // ─── GET /api/user/:username (public profile) ───────────────────────────────────
 
 describe('GET /api/user/:username', () => {
@@ -1182,6 +1450,38 @@ describe('GET /api/user/:username', () => {
     assert.ok(!('id' in data));
     assert.ok(!('role' in data));
     assert.ok(!('is_public' in data));
+    assert.ok(!('roomAttempts' in data));
+  });
+
+  test('should still 403 a private profile for a signed-in non-admin viewer', async () => {
+    const db = mockPublicProfileDB({
+      bob: { id: 2, username: 'bob', role: 'member', avatar: null, created_at: 1000, is_public: 0 },
+    });
+    const cookie = await sessionCookieFor({ sub: 1, username: 'alice', role: 'member' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/user/bob', { headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 403);
+  });
+
+  test('should let an admin viewer bypass is_public and see the whitelisted fields', async () => {
+    const db = mockPublicProfileDB({
+      bob: { id: 2, username: 'bob', role: 'member', avatar: null, created_at: 1000, is_public: 0 },
+    });
+    const cookie = await sessionCookieFor({ sub: 99, username: 'admin_user', role: 'admin' });
+    const res = await worker.fetch(
+      new Request('https://example.com/api/user/bob', { headers: { Cookie: cookie } }),
+      { JWT_SECRET: SECRET, DB: db },
+    );
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.username, 'bob');
+    // Still the same strict whitelist — admin bypass only lifts the privacy
+    // gate, never expands what fields are returned.
+    assert.ok(!('id' in data));
+    assert.ok(!('role' in data));
+    assert.ok(!('email' in data));
     assert.ok(!('roomAttempts' in data));
   });
 });
@@ -1378,7 +1678,7 @@ describe('GET /topic/:id', () => {
       // Real, topic-specific content made it into the initial HTML.
       assert.ok(body.includes(escapeHtml(t.title)), 'title rendered');
       for (const section of t.fullContent.sections) {
-        assert.ok(body.includes(section.heading), `section heading "${section.heading}" rendered`);
+        assert.ok(body.includes(escapeHtml(section.heading)), `section heading "${section.heading}" rendered`);
       }
 
       // SEO tags from topicMetaTags().
